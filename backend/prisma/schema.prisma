@@ -1,0 +1,375 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MAKER
+  CLIENT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PRINTING
+  QUALITY_CHECK
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum QuoteStatus {
+  OPEN
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum MakerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  QUOTE_RECEIVED
+  QUOTE_ACCEPTED
+  PAYMENT_CONFIRMED
+  REVIEW_RECEIVED
+  SYSTEM
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  name          String
+  phone         String?
+  avatar        String?
+  role          UserRole  @default(CLIENT)
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  makerProfile    MakerProfile?
+  ordersAsClient  Order[]        @relation("ClientOrders")
+  reviews         Review[]       @relation("ClientReviews")
+  quoteRequests   QuoteRequest[]
+  notifications   Notification[]
+  favorites       Favorite[]
+  addresses       Address[]
+  payments        Payment[]
+
+  @@map("users")
+}
+
+model Address {
+  id         String  @id @default(uuid())
+  userId     String
+  label      String
+  street     String
+  number     String
+  complement String?
+  district   String
+  city       String
+  state      String
+  zipCode    String
+  country    String  @default("BR")
+  latitude   Float?
+  longitude  Float?
+  isDefault  Boolean @default(false)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@map("addresses")
+}
+
+model MakerProfile {
+  id              String      @id @default(uuid())
+  userId          String      @unique
+  companyName     String?
+  bio             String?     @db.Text
+  website         String?
+  instagram       String?
+  status          MakerStatus @default(PENDING)
+  rating          Float       @default(0)
+  totalReviews    Int         @default(0)
+  totalOrders     Int         @default(0)
+  responseTime    Int         @default(24)
+  latitude        Float?
+  longitude       Float?
+  city            String?
+  state           String?
+  printers        Json        @default("[]")
+  materials       Json        @default("[]")
+  maxBuildVolume  String?
+  documentUrl     String?
+  selfieUrl       String?
+  kycStatus       String      @default("PENDING")
+  commissionRate  Float       @default(0.10)
+  balanceAvail    Float       @default(0)
+  balancePending  Float       @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products       Product[]
+  ordersAsMaker  Order[]         @relation("MakerOrders")
+  quoteResponses QuoteResponse[]
+  reviews        Review[]        @relation("MakerReviews")
+
+  @@map("maker_profiles")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  icon        String?
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  makerId       String
+  categoryId    String
+  name          String
+  slug          String   @unique
+  description   String   @db.Text
+  price         Float
+  comparePrice  Float?
+  images        Json     @default("[]")
+  modelFileUrl  String?
+  material      String
+  color         String?
+  weight        Float?
+  dimensions    String?
+  printTime     Int?
+  stock         Int      @default(0)
+  isActive      Boolean  @default(true)
+  isFeatured    Boolean  @default(false)
+  tags          Json     @default("[]")
+  rating        Float    @default(0)
+  totalReviews  Int      @default(0)
+  totalSales    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  maker     MakerProfile @relation(fields: [makerId], references: [id], onDelete: Cascade)
+  category  Category     @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+  reviews    Review[]
+  favorites  Favorite[]
+
+  @@map("products")
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  clientId      String
+  makerId       String
+  addressId     String?
+  quoteId       String?     @unique
+  status        OrderStatus @default(PENDING)
+  subtotal      Float
+  shipping      Float       @default(0)
+  discount      Float       @default(0)
+  total         Float
+  notes         String?     @db.Text
+  estimatedAt   DateTime?
+  deliveredAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  client    User         @relation("ClientOrders", fields: [clientId], references: [id])
+  maker     MakerProfile @relation("MakerOrders", fields: [makerId], references: [id])
+  address   Address?     @relation(fields: [addressId], references: [id])
+  items     OrderItem[]
+  tracking  Tracking[]
+  payment   Payment?
+  review    Review?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  material  String?
+  color     String?
+  notes     String?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model QuoteRequest {
+  id            String      @id @default(uuid())
+  clientId      String
+  title         String
+  description   String      @db.Text
+  width         Float?
+  height        Float?
+  depth         Float?
+  material      String?
+  resistance    String?
+  quantity      Int         @default(1)
+  fileUrl       String?
+  imageUrl      String?
+  budget        Float?
+  deadline      DateTime?
+  status        QuoteStatus @default(OPEN)
+  latitude      Float?
+  longitude     Float?
+  city          String?
+  state         String?
+  expiresAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  client    User            @relation(fields: [clientId], references: [id])
+  responses QuoteResponse[]
+
+  @@map("quote_requests")
+}
+
+model QuoteResponse {
+  id             String      @id @default(uuid())
+  quoteRequestId String
+  makerId        String
+  price          Float
+  shippingPrice  Float       @default(0)
+  deadline       Int
+  notes          String?     @db.Text
+  fileUrl        String?
+  status         QuoteStatus @default(PENDING)
+  expiresAt      DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  quoteRequest QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  maker        MakerProfile @relation(fields: [makerId], references: [id])
+
+  @@map("quote_responses")
+}
+
+model Tracking {
+  id           String   @id @default(uuid())
+  orderId      String
+  status       String
+  description  String
+  location     String?
+  trackingCode String?
+  carrier      String?
+  createdAt    DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("tracking")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  orderId   String?  @unique
+  productId String?
+  makerId   String
+  clientId  String
+  rating    Int
+  title     String?
+  comment   String?  @db.Text
+  images    Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   Order?       @relation(fields: [orderId], references: [id])
+  product Product?     @relation(fields: [productId], references: [id])
+  maker   MakerProfile @relation("MakerReviews", fields: [makerId], references: [id])
+  client  User         @relation("ClientReviews", fields: [clientId], references: [id])
+
+  @@map("reviews")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("favorites")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  orderId        String        @unique
+  userId         String
+  amount         Float
+  platformFee    Float
+  makerAmount    Float
+  status         PaymentStatus @default(PENDING)
+  provider       String        @default("mercadopago")
+  externalId     String?
+  externalStatus String?
+  pixCode        String?       @db.Text
+  boletoUrl      String?
+  checkoutUrl    String?
+  webhookData    Json?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@map("payments")
+}
