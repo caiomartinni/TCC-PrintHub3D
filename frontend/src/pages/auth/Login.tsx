@@ -162,15 +162,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Demo credentials */}
-          <div className="mt-8 glass rounded-xl p-4 border border-white/5">
-            <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wider">Demo</p>
-            <div className="space-y-1.5 text-xs text-gray-400">
-              <p>Cliente: cliente@printhub3d.com / client123</p>
-              <p>Maker: maker1@printhub3d.com / maker123</p>
-              <p>Admin: admin@printhub3d.com / admin123</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
