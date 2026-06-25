@@ -1,6 +1,6 @@
 import { useSearchParams, Link } from 'react-router-dom';
 import { initMercadoPago, StatusScreen } from '@mercadopago/sdk-react';
-import { CheckCircle, XCircle, Clock, ShoppingBag, ChevronRight, FlaskConical } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ShoppingBag, ChevronRight } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 
 // chamada idempotente — inicializa o SDK do MP se a chave estiver configurada
@@ -68,15 +68,6 @@ export default function PaymentStatus() {
                 onReady={() => {}}
                 onError={(err) => console.error('[MP Status Brick]', err)}
               />
-            </div>
-          )}
-
-          {/* Sandbox simulation note */}
-          {String(paymentId).startsWith('SANDBOX_') && (
-            <div className="px-6 pb-4">
-              <div className="rounded-xl p-3 text-center" style={{ background: '#1a150a', border: '1px solid rgba(251,191,36,0.2)' }}>
-                <p className="text-yellow-400 text-xs flex items-center justify-center gap-1.5"><FlaskConical size={13} className="shrink-0" />Modo sandbox — em produção os detalhes reais do pagamento MP aparecem aqui</p>
-              </div>
             </div>
           )}
 

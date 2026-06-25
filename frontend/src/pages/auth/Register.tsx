@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -177,6 +177,11 @@ export default function Register() {
   const { register: authRegister } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Preserva o destino original caso o usuário tenha sido redirecionado para
+  // o registro a partir de uma ação que exige autenticação (ex: checkout,
+  // orçamento). Após o cadastro concluído, retorna para lá em vez do dashboard.
+  const from = (location.state as { from?: string } | null)?.from;
 
   const [step,       setStep]       = useState(1);
   const [role,       setRole]       = useState<'CLIENT'|'MAKER'|null>(null);
@@ -260,7 +265,9 @@ export default function Register() {
       }
 
       success('Cadastro realizado!', 'Bem-vindo ao PrintHub3D!');
-      navigate(role === 'MAKER' ? '/dashboard/maker' : '/dashboard/client');
+      // makers sempre vão para o dashboard — precisam configurar o perfil antes
+      // clientes voltam para onde estavam se vieram de um fluxo protegido
+      navigate(role === 'MAKER' ? '/dashboard/maker' : (from || '/dashboard/client'));
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Erro ao cadastrar';
       error('Erro no cadastro', msg);

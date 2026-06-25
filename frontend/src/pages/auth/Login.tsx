@@ -156,7 +156,7 @@ export default function Login() {
           <div className="mt-6 text-center">
             <p className="text-gray-500 text-sm">
               Não tem conta?{' '}
-              <Link to="/register" className="text-neon-blue hover:underline font-medium">
+              <Link to="/register" state={from !== '/' ? { from } : undefined} className="text-neon-blue hover:underline font-medium">
                 Cadastrar grátis
               </Link>
             </p>
