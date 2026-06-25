@@ -54,7 +54,12 @@ enum NotificationType {
   QUOTE_ACCEPTED
   PAYMENT_CONFIRMED
   REVIEW_RECEIVED
+  NEW_MESSAGE
   SYSTEM
+}
+
+enum SaqueStatus {
+  CONCLUIDO
 }
 
 model User {
@@ -78,6 +83,7 @@ model User {
   favorites       Favorite[]
   addresses       Address[]
   payments        Payment[]
+  messages        Message[]
 
   @@map("users")
 }
@@ -123,10 +129,12 @@ model MakerProfile {
   printers        Json        @default("[]")
   materials       Json        @default("[]")
   maxBuildVolume  String?
-  documentUrl     String?
+  documentUrl     String?   // Document front
+  documentBackUrl String?   // Document back
   selfieUrl       String?
-  kycStatus       String      @default("PENDING")
-  commissionRate  Float       @default(0.10)
+  kycStatus       String      @default("PENDING")  // PENDING | APPROVED | REJECTED | CORRECTION_NEEDED
+  kycNote         String?     @db.Text             // admin message for corrections
+  commissionRate  Float       @default(0.05)
   balanceAvail    Float       @default(0)
   balancePending  Float       @default(0)
   createdAt       DateTime    @default(now())
@@ -137,8 +145,25 @@ model MakerProfile {
   ordersAsMaker  Order[]         @relation("MakerOrders")
   quoteResponses QuoteResponse[]
   reviews        Review[]        @relation("MakerReviews")
+  saques         Saque[]
 
   @@map("maker_profiles")
+}
+
+model Saque {
+  id             String      @id @default(uuid())
+  makerId        String
+  banco          String
+  ultimosDigitos String
+  valor          Float
+  status         SaqueStatus @default(CONCLUIDO)
+  dataConclusao  DateTime
+  createdAt      DateTime    @default(now())
+
+  maker MakerProfile @relation(fields: [makerId], references: [id], onDelete: Cascade)
+
+  @@index([makerId])
+  @@map("saques")
 }
 
 model Category {
@@ -208,13 +233,15 @@ model Order {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  client    User         @relation("ClientOrders", fields: [clientId], references: [id])
-  maker     MakerProfile @relation("MakerOrders", fields: [makerId], references: [id])
-  address   Address?     @relation(fields: [addressId], references: [id])
-  items     OrderItem[]
-  tracking  Tracking[]
-  payment   Payment?
-  review    Review?
+  client       User          @relation("ClientOrders", fields: [clientId], references: [id])
+  maker        MakerProfile  @relation("MakerOrders", fields: [makerId], references: [id])
+  address      Address?      @relation(fields: [addressId], references: [id])
+  quoteRequest QuoteRequest? @relation(fields: [quoteId], references: [id])
+  items        OrderItem[]
+  tracking     Tracking[]
+  payment      Payment?
+  review       Review?
+  chat         Chat?
 
   @@map("orders")
 }
@@ -261,6 +288,7 @@ model QuoteRequest {
 
   client    User            @relation(fields: [clientId], references: [id])
   responses QuoteResponse[]
+  order     Order?
 
   @@map("quote_requests")
 }
@@ -373,3 +401,30 @@ model Payment {
 
   @@map("payments")
 }
+
+model Chat {
+  id        String   @id @default(uuid())
+  orderId   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@map("chats")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  chatId    String
+  senderId  String
+  content   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+

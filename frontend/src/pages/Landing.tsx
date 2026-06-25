@@ -1,15 +1,41 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Zap, Shield, Star, Package, ChevronRight, Play, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, Zap, Shield, Star, Package, ChevronRight, Play, CheckCircle, Target, Search, Rocket } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import ProductCard from '@/components/shared/ProductCard';
 import MakerCard from '@/components/shared/MakerCard';
+import CategoryIcon from '@/components/shared/CategoryIcon';
 import Button from '@/components/ui/Button';
-import { mockProducts, mockCategories, mockMakers, stats } from '@/data/mock';
-import { formatCurrency } from '@/utils/format';
+import type { Category, Product, MakerProfile } from '@/types';
+import api from '@/services/api';
 
 export default function Landing() {
   const navigate = useNavigate();
+  const [liveStats,  setLiveStats]  = useState({ totalMakers: 0, totalProducts: 0, totalOrders: 0 });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products,   setProducts]   = useState<Product[]>([]);
+  const [makers,     setMakers]     = useState<MakerProfile[]>([]);
+
+  useEffect(() => {
+    api.get('/stats').then(r => {
+      setLiveStats((r.data as { data: typeof liveStats }).data);
+    }).catch(() => {});
+
+    api.get('/categories').then(r => {
+      const data = (r.data as { data: Category[] }).data;
+      setCategories(data.filter(c => (c._count?.products ?? 0) > 0));
+    }).catch(() => {});
+
+    api.get('/products', { params: { limit: 4, sortBy: 'createdAt', order: 'desc' } }).then(r => {
+      setProducts((r.data as { data: Product[] }).data);
+    }).catch(() => {});
+
+    api.get('/makers', { params: { limit: 4, sortBy: 'rating', order: 'desc' } }).then(r => {
+      setMakers((r.data as { data: MakerProfile[] }).data);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
@@ -46,12 +72,11 @@ export default function Landing() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20 max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 gap-6 mt-20 max-w-3xl mx-auto">
             {[
-              { value: stats.totalMakers.toLocaleString(), label: 'Makers Verificados' },
-              { value: stats.totalProducts.toLocaleString(), label: 'Produtos Disponíveis' },
-              { value: stats.totalOrders.toLocaleString(), label: 'Pedidos Realizados' },
-              { value: `${stats.satisfaction}%`, label: 'Satisfação dos Clientes' },
+              { value: liveStats.totalMakers.toLocaleString('pt-BR'),   label: 'Makers Verificados'  },
+              { value: liveStats.totalProducts.toLocaleString('pt-BR'), label: 'Produtos Disponíveis' },
+              { value: liveStats.totalOrders.toLocaleString('pt-BR'),   label: 'Pedidos Realizados'  },
             ].map(({ value, label }) => (
               <div key={label} className="glass rounded-2xl p-4 border border-white/5">
                 <div className="text-3xl font-black gradient-text">{value}</div>
@@ -59,12 +84,6 @@ export default function Landing() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce">
-          <span className="text-xs text-gray-600">Role para ver mais</span>
-          <ChevronRight size={16} className="text-gray-600 rotate-90" />
         </div>
       </section>
 
@@ -75,18 +94,22 @@ export default function Landing() {
           <p className="section-subtitle">Encontre exatamente o que você precisa</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          {mockCategories.map((cat) => (
+        <div className="flex flex-wrap justify-center gap-3">
+          {categories.map((cat) => (
             <Link
               key={cat.id}
               to={`/marketplace?category=${cat.slug}`}
-              className="glass rounded-2xl p-4 text-center border border-white/5 hover:border-neon-blue/30 hover:shadow-neon-blue transition-all duration-300 group"
+              className="glass rounded-2xl p-4 text-center border border-white/5 hover:border-neon-blue/30 hover:shadow-neon-blue transition-all duration-300 group w-32 shrink-0"
             >
-              <div className="text-3xl mb-2">{cat.icon}</div>
+              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-2 group-hover:bg-neon-blue/10 transition-colors">
+                <CategoryIcon slug={cat.slug} size={22} />
+              </div>
               <div className="text-xs font-medium text-gray-300 group-hover:text-white transition-colors leading-tight">
                 {cat.name}
               </div>
-              <div className="text-xs text-gray-600 mt-0.5">{cat._count?.products}</div>
+              <div className="text-xs text-gray-600 mt-0.5">
+                {cat._count?.products ?? 0} {(cat._count?.products ?? 0) === 1 ? 'produto' : 'produtos'}
+              </div>
             </Link>
           ))}
         </div>
@@ -104,11 +127,16 @@ export default function Landing() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {mockProducts.slice(0, 4).map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        {products.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products.map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+        ) : (
+          <div className="text-center py-16 text-gray-600">
+            <Package size={40} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Nenhum produto disponível no momento.</p>
+          </div>
+        )}
 
         <div className="text-center mt-8 md:hidden">
           <Link to="/marketplace"><Button variant="secondary">Ver todos os produtos</Button></Link>
@@ -125,20 +153,22 @@ export default function Landing() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             {
-              icon: '🎯', step: '01', title: 'Escolha ou Solicite',
+              icon: Target, step: '01', title: 'Escolha ou Solicite',
               desc: 'Navegue pelo marketplace e compre produtos prontos, ou envie a descrição da sua peça para receber orçamentos personalizados.'
             },
             {
-              icon: '🔍', step: '02', title: 'Compare e Escolha',
+              icon: Search, step: '02', title: 'Compare e Escolha',
               desc: 'Receba propostas de vários makers verificados. Compare preço, prazo, avaliação e distância para escolher o melhor.'
             },
             {
-              icon: '📦', step: '03', title: 'Receba em Casa',
+              icon: Package, step: '03', title: 'Receba em Casa',
               desc: 'Acompanhe sua peça sendo impressa em tempo real e receba direto na sua casa com rastreamento completo.'
             },
-          ].map(({ icon, step, title, desc }) => (
+          ].map(({ icon: StepIcon, step, title, desc }) => (
             <div key={step} className="glass rounded-2xl p-8 border border-white/5 hover:border-neon-purple/20 transition-all duration-300 text-center">
-              <div className="text-5xl mb-4">{icon}</div>
+              <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+                <StepIcon size={28} className="text-white" strokeWidth={1.5} />
+              </div>
               <div className="text-xs font-mono text-neon-blue mb-2">{step}</div>
               <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
               <p className="text-gray-400 text-sm leading-relaxed">{desc}</p>
@@ -159,9 +189,15 @@ export default function Landing() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {mockMakers.map((maker) => <MakerCard key={maker.id} maker={maker} />)}
-        </div>
+        {makers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {makers.map((maker) => <MakerCard key={maker.id} maker={maker} />)}
+          </div>
+        ) : (
+          <div className="text-center py-16 text-gray-600">
+            <p className="text-sm">Nenhum maker disponível no momento.</p>
+          </div>
+        )}
       </section>
 
       {/* Quote CTA */}
@@ -169,7 +205,7 @@ export default function Landing() {
         <div className="glass rounded-3xl p-12 border border-neon-blue/20 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/5 via-transparent to-neon-purple/5" />
           <div className="relative">
-            <div className="text-5xl mb-6">🚀</div>
+            <Rocket size={44} className="text-white mx-auto mb-6" strokeWidth={1.5} />
             <h2 className="section-title mb-4">Tem uma ideia para imprimir?</h2>
             <p className="section-subtitle mb-8">
               Envie o arquivo STL ou descreva sua peça e receba orçamentos dos makers mais próximos de você em minutos.
@@ -211,32 +247,6 @@ export default function Landing() {
             </div>
           ))}
         </div>
-      </section>
-
-      {/* Pricing preview */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="section-title">Exemplos de Preços</h2>
-          <p className="section-subtitle">Transparência total nos custos</p>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {[
-            { name: 'Chaveiro', price: 8, material: 'PLA', icon: '🔑' },
-            { name: 'Vaso P', price: 35, material: 'PETG', icon: '🌺' },
-            { name: 'Miniatura', price: 45, material: 'Resina', icon: '⚔️' },
-            { name: 'Engrenagem', price: 55, material: 'ABS', icon: '⚙️' },
-            { name: 'Modelo 3D', price: 120, material: 'PLA+', icon: '🏗️' },
-            { name: 'Peça Técnica', price: 200, material: 'Nylon', icon: '🔧' },
-          ].map(({ name, price, material, icon }) => (
-            <div key={name} className="glass rounded-xl p-4 text-center border border-white/5 hover:border-neon-blue/20 transition-all">
-              <div className="text-3xl mb-2">{icon}</div>
-              <div className="font-semibold text-white text-sm">{name}</div>
-              <div className="text-neon-blue font-bold mt-1">a partir de {formatCurrency(price)}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{material}</div>
-            </div>
-          ))}
-        </div>
-        <p className="text-center text-xs text-gray-600 mt-4">*Preços estimados. Varia por complexidade, material e maker.</p>
       </section>
 
       <Footer />

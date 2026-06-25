@@ -1,14 +1,74 @@
 import { Router } from 'express';
-import { getProducts, getProduct, createProduct, updateProduct, deleteProduct, toggleFavorite } from '../controllers/products.controller.js';
+import { body } from 'express-validator';
+import {
+  getProducts, getMyProducts, getFavorites, getProduct,
+  createProduct, updateProduct, deleteProduct, toggleFavorite,
+} from '../controllers/products.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 
 const router = Router();
 
-router.get('/', getProducts);
-router.get('/:slug', getProduct);
-router.post('/', authenticate, authorize('MAKER', 'ADMIN'), createProduct);
-router.put('/:id', authenticate, authorize('MAKER', 'ADMIN'), updateProduct);
-router.delete('/:id', authenticate, authorize('MAKER', 'ADMIN'), deleteProduct);
-router.post('/:id/favorite', authenticate, toggleFavorite);
+// ─────────────────────────────────────────────────────────────────────────────
+// POST / (createProduct) — validações batem com o que products.controller.ts
+// realmente lê do body (`{ name, description, price, categoryId, material,
+// images?, tags?, stock?, color?, weight?, dimensions?, printTime? }`) e com
+// as restrições do model Product em schema.prisma (price: Float obrigatório,
+// stock: Int @default(0), categoryId referencia Category.id String @id
+// @default(uuid()) → formato UUID).
+//
+// E-mail/senha/CPF·CNPJ não entram aqui: são dados de PESSOA (User/
+// MakerProfile), e esta rota cria um PRODUTO — não há "onde aplicável" para
+// esses três no payload de criação de produto.
+const createProductValidation = [
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Nome do produto é obrigatório').bail()
+    .isLength({ min: 3, max: 150 }).withMessage('Nome deve ter entre 3 e 150 caracteres'),
+
+  body('description')
+    .trim()
+    .notEmpty().withMessage('Descrição é obrigatória').bail()
+    .isLength({ min: 10 }).withMessage('Descrição deve ter no mínimo 10 caracteres'),
+
+  body('price')
+    .notEmpty().withMessage('Preço é obrigatório').bail()
+    .isFloat({ gt: 0 }).withMessage('Preço deve ser um número maior que zero'),
+
+  body('categoryId')
+    .notEmpty().withMessage('Categoria é obrigatória').bail()
+    .isUUID().withMessage('Categoria inválida'),
+
+  body('material')
+    .trim()
+    .notEmpty().withMessage('Material é obrigatório'),
+
+  // Opcional no controller (`stock?: number`, default 0 no schema) — quando
+  // enviado, precisa ser um inteiro válido (estoque negativo não faz sentido).
+  body('stock')
+    .optional({ values: 'null' })
+    .isInt({ min: 0 }).withMessage('Estoque deve ser um número inteiro maior ou igual a zero'),
+
+  validate,
+];
+
+// Static routes must come before /:slug / /:id
+router.get('/',          getProducts);
+router.get('/mine',      authenticate, authorize('MAKER', 'ADMIN'), getMyProducts);
+router.get('/favorites', authenticate, getFavorites);
+router.get('/:slug',     getProduct);
+
+// Validação parcial para PUT — só price é verificado quando presente
+const updateProductValidation = [
+  body('price')
+    .optional()
+    .isFloat({ gt: 0 }).withMessage('Preço deve ser um número maior que zero'),
+  validate,
+];
+
+router.post('/',                authenticate, authorize('MAKER', 'ADMIN'), createProductValidation, createProduct);
+router.put('/:id',              authenticate, authorize('MAKER', 'ADMIN'), updateProductValidation, updateProduct);
+router.delete('/:id',           authenticate, authorize('MAKER', 'ADMIN'), deleteProduct);
+router.post('/:id/favorite',    authenticate, toggleFavorite);
 
 export default router;

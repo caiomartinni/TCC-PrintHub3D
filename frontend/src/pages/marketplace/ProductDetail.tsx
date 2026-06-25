@@ -1,30 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Heart, ShoppingCart, Star, MapPin, Package, Clock, Shield, ChevronLeft, ChevronRight, Award, MessageSquare } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import StarRating from '@/components/ui/StarRating';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
-import { mockProducts } from '@/data/mock';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { productsService } from '@/services/products.service';
 import { formatCurrency, formatDate } from '@/utils/format';
+import type { Product, Review } from '@/types';
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { addItem } = useCart();
-  const product = mockProducts.find((p) => p.slug === slug) || mockProducts[0]!;
-  const [selectedImg, setSelectedImg] = useState(0);
-  const [qty, setQty] = useState(1);
-  const [favorited, setFavorited] = useState(false);
+  const { isFavorited, toggle } = useFavorites();
 
-  const mockReviews = [
-    { id: '1', name: 'João S.', rating: 5, comment: 'Peça perfeita! Qualidade incrível, chegou antes do prazo.', date: '2024-01-15' },
-    { id: '2', name: 'Maria L.', rating: 4, comment: 'Boa qualidade, acabamento excelente. Recomendo!', date: '2024-01-10' },
-    { id: '3', name: 'Pedro R.', rating: 5, comment: 'Maker muito profissional. 5 estrelas com certeza!', date: '2024-01-05' },
-  ];
+  const [product,     setProduct]     = useState<Product | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [notFound,    setNotFound]    = useState(false);
+  const [selectedImg, setSelectedImg] = useState(0);
+  const [qty,         setQty]         = useState(1);
+
+  useEffect(() => {
+    if (!slug) return;
+    setLoading(true);
+    setNotFound(false);
+    productsService.getBySlug(slug)
+      .then((p) => setProduct(p))
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  // Reset image index when product changes
+  useEffect(() => { setSelectedImg(0); setQty(1); }, [product?.id]);
+
+  const reviews: Review[] = (product as Product & { reviews?: Review[] })?.reviews ?? [];
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <Navbar />
+      <LoadingSpinner size="lg" />
+    </div>
+  );
+
+  if (notFound || !product) return (
+    <div className="min-h-screen bg-[#0a0a0a]">
+      <Navbar />
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+        <Package size={56} className="text-gray-600" strokeWidth={1.5} />
+        <h2 className="text-2xl font-bold text-white">Produto não encontrado</h2>
+        <p className="text-gray-400">Este produto pode ter sido removido ou o link está incorreto.</p>
+        <Button onClick={() => navigate('/marketplace')}>Voltar ao Marketplace</Button>
+      </div>
+      <Footer />
+    </div>
+  );
+
+  const images = (product.images as unknown as string[]) ?? [];
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
@@ -43,21 +80,25 @@ export default function ProductDetail() {
           {/* Gallery */}
           <div className="space-y-4">
             <div className="aspect-square rounded-2xl overflow-hidden glass border border-white/10 relative">
-              <img src={product.images[selectedImg] || product.images[0]} alt={product.name} className="w-full h-full object-cover" />
-              {product.images.length > 1 && (
+              <img
+                src={images[selectedImg] || images[0] || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600'}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+              {images.length > 1 && (
                 <>
                   <button onClick={() => setSelectedImg((s) => Math.max(0, s - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 glass rounded-full p-2 hover:text-white">
                     <ChevronLeft size={16} />
                   </button>
-                  <button onClick={() => setSelectedImg((s) => Math.min(product.images.length - 1, s + 1))} className="absolute right-3 top-1/2 -translate-y-1/2 glass rounded-full p-2 hover:text-white">
+                  <button onClick={() => setSelectedImg((s) => Math.min(images.length - 1, s + 1))} className="absolute right-3 top-1/2 -translate-y-1/2 glass rounded-full p-2 hover:text-white">
                     <ChevronRight size={16} />
                   </button>
                 </>
               )}
             </div>
-            {product.images.length > 1 && (
+            {images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                {product.images.map((img, i) => (
+                {images.map((img, i) => (
                   <button key={i} onClick={() => setSelectedImg(i)} className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${i === selectedImg ? 'border-neon-blue' : 'border-white/10'}`}>
                     <img src={img} className="w-full h-full object-cover" />
                   </button>
@@ -119,6 +160,13 @@ export default function ProductDetail() {
                 <span className="text-xs text-gray-500">{product.stock} disponíveis</span>
               </div>
 
+              {product.stock === 0 && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
+                  <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                  Produto sem estoque
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <Button
                   className="flex-1"
@@ -133,10 +181,15 @@ export default function ProductDetail() {
                     : `Adicionar ao Carrinho — ${formatCurrency(product.price * qty)}`}
                 </Button>
                 <button
-                  onClick={() => setFavorited(!favorited)}
-                  className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-all ${favorited ? 'bg-red-500/20 border-red-500/30 text-red-400' : 'glass border-white/10 text-gray-400 hover:text-red-400'}`}
+                  onClick={() => toggle(product)}
+                  title={isFavorited(product.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                  className={`w-12 h-12 rounded-xl border flex items-center justify-center transition-all ${
+                    isFavorited(product.id)
+                      ? 'bg-red-500/20 border-red-500/30 text-red-400'
+                      : 'glass border-white/10 text-gray-400 hover:text-red-400'
+                  }`}
                 >
-                  <Heart size={18} fill={favorited ? 'currentColor' : 'none'} />
+                  <Heart size={18} fill={isFavorited(product.id) ? 'currentColor' : 'none'} />
                 </button>
               </div>
             </div>
@@ -154,7 +207,6 @@ export default function ProductDetail() {
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                       <div className="flex items-center gap-1"><Star size={11} className="fill-yellow-400 text-yellow-400" />{product.maker.rating.toFixed(1)}</div>
                       <div className="flex items-center gap-1"><MapPin size={11} />{product.maker.city}, {product.maker.state}</div>
-                      <div className="flex items-center gap-1"><Clock size={11} />~{product.maker.responseTime}h resposta</div>
                     </div>
                   </div>
                 </div>
@@ -194,25 +246,33 @@ export default function ProductDetail() {
                   <span className="text-gray-400 text-sm">({product.totalReviews})</span>
                 </div>
               </div>
-              <div className="space-y-4">
-                {mockReviews.map((r) => (
-                  <div key={r.id} className="glass rounded-xl p-5 border border-white/5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={r.name} size="sm" />
-                        <div>
-                          <span className="font-medium text-white text-sm">{r.name}</span>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <StarRating rating={r.rating} size={11} />
+              {reviews.length === 0 ? (
+                <div className="glass rounded-xl p-8 border border-white/5 text-center">
+                  <Star size={32} className="text-gray-700 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500">Nenhuma avaliação ainda.</p>
+                  <p className="text-xs text-gray-600 mt-1">Seja o primeiro a avaliar este produto.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="glass rounded-xl p-5 border border-white/5">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={r.client?.name ?? '?'} src={r.client?.avatar} size="sm" />
+                          <div>
+                            <span className="font-medium text-white text-sm">{r.client?.name ?? 'Cliente'}</span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <StarRating rating={r.rating} size={11} />
+                            </div>
                           </div>
                         </div>
+                        <span className="text-xs text-gray-500">{formatDate(r.createdAt)}</span>
                       </div>
-                      <span className="text-xs text-gray-500">{formatDate(r.date)}</span>
+                      {r.comment && <p className="text-sm text-gray-400">{r.comment}</p>}
                     </div>
-                    <p className="text-sm text-gray-400">{r.comment}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

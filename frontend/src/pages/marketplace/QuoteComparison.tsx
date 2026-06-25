@@ -122,7 +122,7 @@ export default function QuoteComparison() {
                 </div>
                 <div className="glass rounded-xl p-3 text-center">
                   <div className="text-xs text-gray-500 mb-1"><Star size={10} className="inline" />Rating</div>
-                  <div className="font-semibold text-white">{r.rating}★</div>
+                  <div className="font-semibold text-white flex items-center justify-center gap-1">{r.rating}<Star size={11} className="fill-yellow-400 text-yellow-400" /></div>
                 </div>
               </div>
 

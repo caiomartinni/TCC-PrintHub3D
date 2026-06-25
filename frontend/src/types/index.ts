@@ -33,7 +33,6 @@ export interface MakerProfile {
   rating: number;
   totalReviews: number;
   totalOrders: number;
-  responseTime: number;
   latitude?: number;
   longitude?: number;
   city?: string;
@@ -42,6 +41,10 @@ export interface MakerProfile {
   materials: string[];
   maxBuildVolume?: string;
   kycStatus: string;
+  kycNote?: string;
+  documentUrl?: string;
+  documentBackUrl?: string;
+  selfieUrl?: string;
   commissionRate: number;
   balanceAvail: number;
   balancePending: number;
@@ -109,10 +112,17 @@ export interface TrackingEntry {
   createdAt: string;
 }
 
+
+export interface OrderAddress {
+  street: string; number: string; complement?: string;
+  district: string; city: string; state: string; zipCode: string;
+}
+
 export interface Order {
   id: string;
   clientId: string;
   makerId: string;
+  quoteId?: string;
   status: OrderStatus;
   subtotal: number;
   shipping: number;
@@ -126,7 +136,10 @@ export interface Order {
   maker?: MakerProfile & { user?: Pick<User, 'name' | 'avatar'> };
   client?: Pick<User, 'name' | 'email' | 'avatar'>;
   tracking?: TrackingEntry[];
-  payment?: { status: PaymentStatus; amount: number };
+  payment?:      { status: PaymentStatus; amount: number };
+  quoteRequest?: { id: string; title: string };
+  review?:       { id: string; rating: number } | null;
+  address?:      OrderAddress | null;
 }
 
 export interface QuoteRequest {
@@ -186,6 +199,7 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
+  data?: Record<string, unknown>;
 }
 
 export interface ApiResponse<T> {
@@ -209,6 +223,30 @@ export interface PaginatedResponse<T> {
 export interface CartItem {
   product: Product;
   quantity: number;
+}
+
+export interface ChatMessage {
+  id:        string;
+  chatId:    string;
+  senderId:  string;
+  content:   string;
+  isRead:    boolean;
+  createdAt: string;
+  sender:    Pick<User, 'id' | 'name' | 'avatar'> & { role: UserRole };
+}
+
+export interface Chat {
+  id:        string;
+  orderId:   string;
+  createdAt: string;
+  messages:  ChatMessage[];
+  order?: {
+    id:     string;
+    status: OrderStatus;
+    client: Pick<User, 'id' | 'name' | 'avatar'>;
+    maker:  MakerProfile & { user: Pick<User, 'id' | 'name' | 'avatar'> };
+    items:  { id: string; quantity: number; product?: { name: string } }[];
+  };
 }
 
 export interface AuthState {

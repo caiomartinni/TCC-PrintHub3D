@@ -1,16 +1,21 @@
 import { Router } from 'express';
 import {
-  createQuoteRequest, getQuoteRequests, getOpenQuotes,
-  respondToQuote, acceptQuoteResponse,
+  createQuoteRequest, getQuoteRequests, getOpenQuotes, getMakerQuotes,
+  respondToQuote, rejectQuoteRequest, acceptQuoteResponse, updateQuoteFiles,
 } from '../controllers/quotes.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/open', authenticate, authorize('MAKER'), getOpenQuotes);
-router.get('/', authenticate, getQuoteRequests);
-router.post('/', authenticate, authorize('CLIENT'), createQuoteRequest);
-router.post('/:id/respond', authenticate, authorize('MAKER'), respondToQuote);
-router.post('/responses/:id/accept', authenticate, authorize('CLIENT'), acceptQuoteResponse);
+// Static routes before /:id patterns
+router.get('/open',   authenticate, authorize('MAKER', 'ADMIN'), getOpenQuotes);
+router.get('/maker',  authenticate, authorize('MAKER', 'ADMIN'), getMakerQuotes);
+router.get('/',       authenticate, getQuoteRequests);
+
+router.post('/',                     authenticate,                               createQuoteRequest);
+router.post('/:id/respond',          authenticate, authorize('MAKER', 'ADMIN'),  respondToQuote);
+router.post('/:id/reject',           authenticate, authorize('MAKER', 'ADMIN'),  rejectQuoteRequest);
+router.post('/responses/:id/accept', authenticate,                               acceptQuoteResponse);
+router.patch('/:id/files',           authenticate, authorize('CLIENT'),           updateQuoteFiles);
 
 export default router;

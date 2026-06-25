@@ -1,17 +1,82 @@
+import { useState } from 'react';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
+import { ordersService } from '@/services/orders.service';
 import Button from '@/components/ui/Button';
 import { formatCurrency } from '@/utils/format';
 import { cn } from '@/utils/cn';
 
 export default function CartDrawer() {
-  const { items, isOpen, closeCart, removeItem, updateQuantity, total, itemCount } = useCart();
-  const navigate = useNavigate();
+  const { items, isOpen, closeCart, removeItem, updateQuantity, total, itemCount, clearCart } = useCart();
+  const { isAuthenticated } = useAuth();
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const { error }  = useToast();
+  const [creating, setCreating] = useState(false);
 
-  const handleCheckout = () => {
-    closeCart();
-    navigate('/checkout');
+  const handleCheckout = async () => {
+    if (items.length === 0) return;
+
+    if (!isAuthenticated) {
+      closeCart();
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+
+    setCreating(true);
+    try {
+      // Group items by maker (each maker = one order)
+      const byMaker: Record<string, typeof items> = {};
+      for (const item of items) {
+        const mid = item.product.makerId;
+        if (!byMaker[mid]) byMaker[mid] = [];
+        byMaker[mid].push(item);
+      }
+
+      const makerIds = Object.keys(byMaker);
+
+      // Create the first order (most common: single maker)
+      const firstMakerId = makerIds[0]!;
+      const firstItems   = byMaker[firstMakerId]!;
+
+      const order = await ordersService.create({
+        makerId: firstMakerId,
+        items: firstItems.map(i => ({
+          productId: i.product.id,
+          quantity:  i.quantity,
+        })),
+        notes: `Compra via Marketplace${makerIds.length > 1 ? ` (${makerIds.length} makers)` : ''}`,
+      });
+
+      // If multiple makers, create the remaining orders in background
+      if (makerIds.length > 1) {
+        for (const mid of makerIds.slice(1)) {
+          const mItems = byMaker[mid]!;
+          await ordersService.create({
+            makerId: mid,
+            items: mItems.map(i => ({ productId: i.product.id, quantity: i.quantity })),
+          }).catch(() => {});
+        }
+      }
+
+      clearCart();
+      closeCart();
+      navigate(`/checkout?orderId=${order.id}`);
+    } catch (err: unknown) {
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (apiMsg?.includes('Produto não encontrado') || apiMsg?.includes('Maker não encontrado')) {
+        // Cart has stale product IDs from before the real API was connected
+        clearCart();
+        error('Carrinho desatualizado', 'Os produtos do carrinho foram removidos. Adicione-os novamente pelo Marketplace.');
+      } else {
+        error('Erro ao finalizar', apiMsg ?? 'Não foi possível criar o pedido. Tente novamente.');
+      }
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleGoMarketplace = () => {
@@ -57,7 +122,7 @@ export default function CartDrawer() {
         {/* Empty state */}
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-6">
-            <div className="text-6xl select-none">🛒</div>
+            <ShoppingBag size={56} className="text-gray-600" strokeWidth={1.5} />
             <h3 className="text-lg font-bold text-white">Seu carrinho está vazio</h3>
             <p className="text-gray-400 text-sm leading-relaxed">
               Explore o marketplace e adicione produtos que você queira comprar.
@@ -144,7 +209,7 @@ export default function CartDrawer() {
               </div>
             </div>
 
-            <Button className="w-full" onClick={handleCheckout}>
+            <Button className="w-full" onClick={handleCheckout} loading={creating}>
               Finalizar Pedido
               <ArrowRight size={18} />
             </Button>

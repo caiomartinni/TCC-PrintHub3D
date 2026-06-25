@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// Em produção (Vercel), o frontend e o backend ficam em domínios diferentes,
+// então usamos VITE_API_URL (configurada no painel da Vercel) apontando para
+// a URL pública do backend. Em dev, sem essa variável, cai no proxy do Vite (/api).
+const baseURL = import.meta.env.VITE_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -19,7 +24,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('printhub_refresh');
       if (refreshToken) {
         try {
-          const { data } = await axios.post('/api/auth/refresh', { refreshToken });
+          const { data } = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
           localStorage.setItem('printhub_token', data.data.token);
           localStorage.setItem('printhub_refresh', data.data.refreshToken);
           error.config.headers.Authorization = `Bearer ${data.data.token}`;

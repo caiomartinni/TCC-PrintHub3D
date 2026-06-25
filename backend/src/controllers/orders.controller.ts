@@ -4,6 +4,7 @@ import { successResponse, errorResponse, paginatedResponse } from '../utils/resp
 import { AuthRequest } from '../types/index.js';
 import { createNotification } from '../services/notification.service.js';
 import { OrderStatus, NotificationType } from '@prisma/client';
+import logger from '../utils/logger.js';
 
 export const getOrders = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -27,11 +28,12 @@ export const getOrders = async (req: AuthRequest, res: Response): Promise<void> 
         take: parseInt(limit),
         orderBy: { createdAt: 'desc' },
         include: {
-          items: { include: { product: { select: { name: true, images: true } } } },
-          maker: { include: { user: { select: { name: true, avatar: true } } } },
-          client: { select: { name: true, email: true, avatar: true } },
+          items:    { include: { product: { select: { name: true, images: true } } } },
+          maker:    { include: { user: { select: { name: true, avatar: true } } } },
+          client:   { select: { name: true, email: true, avatar: true } },
           tracking: { orderBy: { createdAt: 'desc' }, take: 1 },
-          payment: { select: { status: true, amount: true } },
+          payment:  { select: { status: true, amount: true } },
+          review:   { select: { id: true, rating: true } },
         },
       }),
       prisma.order.count({ where }),
@@ -39,7 +41,7 @@ export const getOrders = async (req: AuthRequest, res: Response): Promise<void> 
 
     paginatedResponse(res, orders, total, parseInt(page), parseInt(limit));
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao buscar pedidos', 500);
   }
 };
@@ -76,7 +78,7 @@ export const getOrder = async (req: AuthRequest, res: Response): Promise<void> =
     void makerProfile;
     successResponse(res, order);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao buscar pedido', 500);
   }
 };
@@ -93,6 +95,30 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     const products = await Promise.all(
       items.map((item) => prisma.product.findUnique({ where: { id: item.productId } }))
     );
+
+    // Validate that all products exist in the database
+    const missing = items.filter((_, i) => !products[i]);
+    if (missing.length > 0) {
+      errorResponse(res, `Produto não encontrado no banco de dados. Atualize o carrinho e tente novamente.`, 422);
+      return;
+    }
+
+    // Validate stock availability
+    const outOfStock = items.filter((item, i) => {
+      const p = products[i];
+      return p && p.stock < item.quantity;
+    });
+    if (outOfStock.length > 0) {
+      errorResponse(res, 'Um ou mais produtos não têm estoque suficiente.', 422);
+      return;
+    }
+
+    // Validate maker profile exists
+    const makerProfile = await prisma.makerProfile.findUnique({ where: { id: makerId } });
+    if (!makerProfile) {
+      errorResponse(res, 'Maker não encontrado. Atualize o carrinho e tente novamente.', 422);
+      return;
+    }
 
     const subtotal = items.reduce((sum, item, i) => {
       const product = products[i];
@@ -127,6 +153,16 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       include: { items: true, tracking: true },
     });
 
+    // Decrementa estoque de cada produto
+    await Promise.all(
+      items.map((item) =>
+        prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        })
+      )
+    );
+
     const makerUser = await prisma.makerProfile.findUnique({
       where: { id: makerId },
       include: { user: true },
@@ -142,7 +178,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
 
     successResponse(res, order, 'Pedido criado', 201);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao criar pedido', 500);
   }
 };
@@ -154,23 +190,54 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       status: string; description?: string; location?: string; trackingCode?: string; carrier?: string;
     };
 
-    const order = await prisma.order.findUnique({ where: { id }, include: { maker: true } });
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: { maker: true, payment: { select: { status: true } } },
+    });
     if (!order) {
       errorResponse(res, 'Pedido não encontrado', 404);
       return;
     }
 
-    const isMaker = order.maker.userId === req.user!.id;
-    const isAdmin = req.user!.role === 'ADMIN';
-    if (!isMaker && !isAdmin) {
+    const isMaker  = order.maker.userId === req.user!.id;
+    const isClient = order.clientId === req.user!.id;
+    const isAdmin  = req.user!.role === 'ADMIN';
+
+    // Clientes só podem confirmar recebimento (DELIVERED)
+    if (isClient && status !== 'DELIVERED') {
       errorResponse(res, 'Acesso negado', 403);
       return;
+    }
+    // Makers não podem marcar como entregue — isso é responsabilidade do cliente
+    if (isMaker && status === 'DELIVERED') {
+      errorResponse(res, 'Apenas o cliente pode confirmar o recebimento do pedido', 403);
+      return;
+    }
+    if (!isMaker && !isClient && !isAdmin) {
+      errorResponse(res, 'Acesso negado', 403);
+      return;
+    }
+
+    // Bloqueia avanço do maker enquanto pagamento não estiver confirmado
+    // (exceto para CANCELLED — maker pode cancelar a qualquer momento)
+    const progressStatuses = ['CONFIRMED', 'PRINTING', 'QUALITY_CHECK', 'SHIPPED'];
+    if (isMaker && progressStatuses.includes(status)) {
+      const paymentPaid = order.payment?.status === 'PAID';
+      if (!paymentPaid) {
+        errorResponse(
+          res,
+          'Pagamento pendente. Aguarde a confirmação do pagamento do cliente antes de prosseguir com o pedido.',
+          402
+        );
+        return;
+      }
     }
 
     const updated = await prisma.order.update({
       where: { id },
       data: {
         status: status as OrderStatus,
+        deliveredAt: status === 'DELIVERED' ? new Date() : undefined,
         tracking: {
           create: {
             status,
@@ -181,18 +248,65 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
           },
         },
       },
+      include: { items: true },
     });
 
-    await createNotification(
-      order.clientId,
-      NotificationType.ORDER_UPDATE,
-      'Pedido atualizado',
-      `Seu pedido foi atualizado para: ${status}`
-    );
+    // Quando entregue: incrementa totalSales, totalOrders e adiciona ao saldo disponível
+    if (status === 'DELIVERED') {
+      // Maker recebe 90% do total do pedido (plataforma fica com 10%)
+      const makerAmount = parseFloat((order.total * 0.90).toFixed(2));
+      await Promise.all([
+        ...updated.items.map((item) =>
+          prisma.product.update({
+            where: { id: item.productId },
+            data: { totalSales: { increment: item.quantity } },
+          })
+        ),
+        prisma.makerProfile.update({
+          where: { id: order.makerId },
+          data: {
+            totalOrders:  { increment: 1 },
+            balanceAvail: { increment: makerAmount },
+          },
+        }),
+      ]);
+    }
+
+    // Quando cancelado/reembolsado: devolve estoque
+    if (status === 'CANCELLED' || status === 'REFUNDED') {
+      await Promise.all(
+        updated.items.map((item) =>
+          prisma.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          })
+        )
+      );
+    }
+
+    if (isClient) {
+      // Cliente confirmou recebimento → notifica o maker
+      const makerUserId = order.maker.userId;
+      const shortId = order.id.slice(-8).toUpperCase();
+      await createNotification(
+        makerUserId,
+        NotificationType.ORDER_UPDATE,
+        'Entrega confirmada',
+        `O cliente confirmou o recebimento do Pedido #${shortId}`
+      );
+    } else {
+      // Maker/admin atualizou status → notifica o cliente
+      await createNotification(
+        order.clientId,
+        NotificationType.ORDER_UPDATE,
+        'Pedido atualizado',
+        `Seu pedido foi atualizado para: ${status}`
+      );
+    }
 
     successResponse(res, updated, 'Status atualizado');
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao atualizar pedido', 500);
   }
 };

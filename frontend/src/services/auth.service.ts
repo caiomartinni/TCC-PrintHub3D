@@ -17,12 +17,41 @@ export const authService = {
     return data.data as User;
   },
 
-  async updateProfile(payload: { name?: string; phone?: string }) {
+  async updateProfile(payload: { name?: string; phone?: string; avatar?: string }) {
     const { data } = await api.put('/auth/profile', payload);
     return data.data as User;
   },
 
+  async uploadAvatar(file: File): Promise<string> {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await api.post('/uploads/image', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return (data.data as { url: string }).url;
+  },
+
   async changePassword(currentPassword: string, newPassword: string) {
     await api.put('/auth/password', { currentPassword, newPassword });
+  },
+
+  async deleteAccount(password: string) {
+    await api.delete('/auth/account', { data: { password } });
+  },
+
+  async getAddress() {
+    const { data } = await api.get('/auth/address');
+    return data.data as {
+      id: string; label: string; street: string; number: string;
+      complement?: string; district: string; city: string; state: string; zipCode: string;
+    } | null;
+  },
+
+  async saveAddress(payload: {
+    label: string; street: string; number: string; complement?: string;
+    district: string; city: string; state: string; zipCode: string;
+  }) {
+    const { data } = await api.post('/auth/address', payload);
+    return data.data;
   },
 };

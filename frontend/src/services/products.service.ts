@@ -26,6 +26,16 @@ export const productsService = {
     await api.delete(`/products/${id}`);
   },
 
+  async getMine(page = 1, limit = 50) {
+    const { data } = await api.get('/products/mine', { params: { page, limit } });
+    return data as PaginatedResponse<Product>;
+  },
+
+  async getFavorites() {
+    const { data } = await api.get('/products/favorites');
+    return data.data as Product[];
+  },
+
   async toggleFavorite(id: string) {
     const { data } = await api.post(`/products/${id}/favorite`);
     return data.data as { favorited: boolean };

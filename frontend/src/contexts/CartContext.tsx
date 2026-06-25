@@ -18,26 +18,43 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-const STORAGE_KEY = 'printhub_cart';
+// Returns a user-specific localStorage key so carts don't bleed between accounts
+const storageKey = (userId?: string) =>
+  userId ? `printhub_cart_${userId}` : null;
+
+const loadCart = (userId?: string): CartItem[] => {
+  const key = storageKey(userId);
+  if (!key) return [];
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? (JSON.parse(stored) as CartItem[]) : [];
+  } catch {
+    return [];
+  }
+};
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<CartItem[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? (JSON.parse(stored) as CartItem[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [items,  setItems]  = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
+  // ── Reload cart whenever the logged-in user changes ──────────────────────────
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+    setItems(loadCart(user?.id));
+    setIsOpen(false); // close drawer on account switch
+  }, [user?.id]);
 
+  // ── Persist to the current user's key whenever items change ──────────────────
+  useEffect(() => {
+    const key = storageKey(user?.id);
+    if (key) {
+      localStorage.setItem(key, JSON.stringify(items));
+    }
+  }, [items, user?.id]);
+
+  // ── Actions ───────────────────────────────────────────────────────────────────
   const addItem = useCallback(
     (product: Product, quantity = 1) => {
       if (!isAuthenticated) {
@@ -66,10 +83,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const updateQuantity = useCallback(
     (productId: string, quantity: number) => {
-      if (quantity <= 0) {
-        removeItem(productId);
-        return;
-      }
+      if (quantity <= 0) { removeItem(productId); return; }
       setItems((prev) =>
         prev.map((i) =>
           i.product.id === productId
@@ -81,12 +95,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     [removeItem]
   );
 
-  const clearCart = useCallback(() => setItems([]), []);
-  const openCart = useCallback(() => setIsOpen(true), []);
-  const closeCart = useCallback(() => setIsOpen(false), []);
+  const clearCart  = useCallback(() => setItems([]), []);
+  const openCart   = useCallback(() => setIsOpen(true),  []);
+  const closeCart  = useCallback(() => setIsOpen(false), []);
 
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-  const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  const total     = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
 
   return (
     <CartContext.Provider

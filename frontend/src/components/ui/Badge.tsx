@@ -18,5 +18,5 @@ const variants: Record<BadgeVariant, string> = {
 };
 
 export default function Badge({ children, variant = 'blue', className }: BadgeProps) {
-  return <span className={cn(variants[variant], className)}>{children}</span>;
+  return <span className={cn('badge', variants[variant], className)}>{children}</span>;
 }

@@ -1,5 +1,6 @@
 // Mercado Pago Split Marketplace - Pre-integration service
 // Configure MERCADO_PAGO_ACCESS_TOKEN to enable
+import logger from '../utils/logger.js';
 
 export interface PaymentData {
   orderId: string;
@@ -34,7 +35,7 @@ class PaymentService {
   async createCheckout(data: PaymentData): Promise<PaymentResult> {
     // TODO: Integrate Mercado Pago Checkout Pro
     // POST https://api.mercadopago.com/checkout/preferences
-    console.log('[PaymentService] createCheckout - not yet integrated', data);
+    logger.debug({ data }, '[PaymentService] createCheckout - not yet integrated');
     return {
       externalId: `mock_${Date.now()}`,
       status: 'pending',
@@ -45,7 +46,7 @@ class PaymentService {
   async createSplitPayment(data: PaymentData, split: SplitConfig): Promise<PaymentResult> {
     // TODO: Integrate Mercado Pago Marketplace Split
     // Uses marketplace access token with application_fee
-    console.log('[PaymentService] createSplitPayment - not yet integrated', { data, split });
+    logger.debug({ data, split }, '[PaymentService] createSplitPayment - not yet integrated');
     const makerAmount = data.amount * (1 - split.platformFeeRate);
     const platformFee = data.amount * split.platformFeeRate;
     return {
@@ -59,19 +60,19 @@ class PaymentService {
 
   async getPaymentStatus(externalId: string): Promise<string> {
     // TODO: GET https://api.mercadopago.com/v1/payments/{id}
-    console.log('[PaymentService] getPaymentStatus - not yet integrated', externalId);
+    logger.debug({ externalId }, '[PaymentService] getPaymentStatus - not yet integrated');
     return 'pending';
   }
 
   async processWebhook(body: Record<string, unknown>): Promise<void> {
     // TODO: Process Mercado Pago webhooks
     // Validate webhook signature with MERCADO_PAGO_WEBHOOK_SECRET
-    console.log('[PaymentService] processWebhook', body);
+    logger.info({ body }, '[PaymentService] processWebhook');
   }
 
   async refund(externalId: string, amount?: number): Promise<void> {
     // TODO: POST https://api.mercadopago.com/v1/payments/{id}/refunds
-    console.log('[PaymentService] refund - not yet integrated', { externalId, amount });
+    logger.debug({ externalId, amount }, '[PaymentService] refund - not yet integrated');
   }
 
   isConfigured(): boolean {

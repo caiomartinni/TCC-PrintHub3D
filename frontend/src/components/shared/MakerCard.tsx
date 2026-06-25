@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Star, MapPin, Clock, Package, Award } from 'lucide-react';
+import { Star, MapPin, Package, Award } from 'lucide-react';
 import type { MakerProfile } from '@/types';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
@@ -47,10 +47,6 @@ export default function MakerCard({ maker, className }: MakerCardProps) {
           <div className="flex items-center gap-1 text-xs text-gray-500">
             <Package size={12} />
             <span>{maker.totalOrders} pedidos</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <Clock size={12} />
-            <span>~{maker.responseTime}h</span>
           </div>
         </div>
 

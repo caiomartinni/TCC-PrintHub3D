@@ -3,6 +3,7 @@ import prisma from '../utils/prisma.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/response.js';
 import { AuthRequest } from '../types/index.js';
 import { findNearestMakers } from '../services/geo.service.js';
+import logger from '../utils/logger.js';
 
 export const getMakers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -51,7 +52,7 @@ export const getMakers = async (req: Request, res: Response): Promise<void> => {
 
     paginatedResponse(res, makers, total, parseInt(page), parseInt(limit));
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao buscar makers', 500);
   }
 };
@@ -84,7 +85,7 @@ export const getMaker = async (req: Request, res: Response): Promise<void> => {
 
     successResponse(res, maker);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao buscar maker', 500);
   }
 };
@@ -94,29 +95,39 @@ export const updateMakerProfile = async (req: AuthRequest, res: Response): Promi
     const {
       companyName, bio, website, instagram,
       city, state, printers, materials, maxBuildVolume,
-      latitude, longitude,
+      latitude, longitude, selfieUrl, documentUrl, documentBackUrl,
     } = req.body as Record<string, unknown>;
+
+    // Build update object — only include defined fields
+    const data: Record<string, unknown> = {};
+    if (companyName   !== undefined) data['companyName']   = companyName;
+    if (bio           !== undefined) data['bio']           = bio;
+    if (website       !== undefined) data['website']       = website;
+    if (instagram     !== undefined) data['instagram']     = instagram;
+    if (city          !== undefined) data['city']          = city;
+    if (state         !== undefined) data['state']         = state;
+    if (printers      !== undefined) data['printers']      = printers;
+    if (materials     !== undefined) data['materials']     = materials;
+    if (maxBuildVolume!== undefined) data['maxBuildVolume']= maxBuildVolume;
+    if (latitude      !== undefined) data['latitude']      = latitude;
+    if (longitude     !== undefined) data['longitude']     = longitude;
+    if (selfieUrl        !== undefined) data['selfieUrl']        = selfieUrl;
+    if (documentUrl      !== undefined) data['documentUrl']      = documentUrl;
+    if (documentBackUrl  !== undefined) data['documentBackUrl']  = documentBackUrl;
+    // When documents are sent, reset kycStatus to PENDING and clear any correction note
+    if (selfieUrl || documentUrl || documentBackUrl) {
+      data['kycStatus'] = 'PENDING';
+      data['kycNote']   = null;
+    }
 
     const maker = await prisma.makerProfile.update({
       where: { userId: req.user!.id },
-      data: {
-        companyName: companyName as string,
-        bio: bio as string,
-        website: website as string,
-        instagram: instagram as string,
-        city: city as string,
-        state: state as string,
-        printers: printers as string[],
-        materials: materials as string[],
-        maxBuildVolume: maxBuildVolume as string,
-        latitude: latitude as number,
-        longitude: longitude as number,
-      },
+      data,
     });
 
     successResponse(res, maker, 'Perfil atualizado');
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao atualizar perfil', 500);
   }
 };
@@ -163,7 +174,62 @@ export const getMakerDashboard = async (req: AuthRequest, res: Response): Promis
       recentReviews,
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao buscar dashboard', 500);
+  }
+};
+
+// ── Lista paginada de avaliações do maker logado ─────────────────────────────
+export const getMakerReviews = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { page = '1', limit = '10' } = req.query as Record<string, string>;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const maker = await prisma.makerProfile.findUnique({ where: { userId: req.user!.id } });
+    if (!maker) {
+      errorResponse(res, 'Perfil não encontrado', 404);
+      return;
+    }
+
+    const [reviews, total, distribution] = await Promise.all([
+      prisma.review.findMany({
+        where: { makerId: maker.id },
+        skip,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          client:  { select: { name: true, avatar: true } },
+          product: { select: { name: true } },
+        },
+      }),
+      prisma.review.count({ where: { makerId: maker.id } }),
+      prisma.review.groupBy({
+        by: ['rating'],
+        where: { makerId: maker.id },
+        _count: { rating: true },
+      }),
+    ]);
+
+    const ratingCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    distribution.forEach((d) => { ratingCounts[d.rating] = d._count.rating; });
+
+    res.json({
+      success: true,
+      data: reviews,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+      summary: {
+        rating: maker.rating,
+        totalReviews: maker.totalReviews,
+        ratingCounts,
+      },
+    });
+  } catch (err) {
+    logger.error(err);
+    errorResponse(res, 'Erro ao buscar avaliações', 500);
   }
 };

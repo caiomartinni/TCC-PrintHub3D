@@ -21,4 +21,35 @@ export const makersService = {
     const { data } = await api.get('/makers/dashboard');
     return data.data;
   },
+
+  async getReviews(params?: { page?: number; limit?: number }) {
+    const { data } = await api.get('/makers/reviews', { params });
+    return data as {
+      data: {
+        id: string;
+        rating: number;
+        title?: string;
+        comment?: string;
+        createdAt: string;
+        client: { name: string; avatar?: string };
+        product?: { name: string } | null;
+      }[];
+      pagination: { total: number; page: number; limit: number; pages: number };
+      summary: { rating: number; totalReviews: number; ratingCounts: Record<number, number> };
+    };
+  },
+
+  async getWithdrawals() {
+    const { data } = await api.get('/makers/withdrawals');
+    return data.data as {
+      balanceAvail: number;
+      balancePending: number;
+      history: { id: string; amount: number; pixKey: string; pixKeyType: string; status: string; createdAt: string }[];
+    };
+  },
+
+  async requestWithdrawal(payload: { amount: number; pixKey: string; pixKeyType: string }) {
+    const { data } = await api.post('/makers/withdraw', payload);
+    return data;
+  },
 };

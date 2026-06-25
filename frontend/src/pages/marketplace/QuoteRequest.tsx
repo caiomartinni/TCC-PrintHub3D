@@ -1,29 +1,45 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Upload, FileUp, Image, Info, MapPin, DollarSign, Calendar, Layers, HelpCircle, X } from 'lucide-react';
+import { Upload, FileUp, Image, Info, MapPin, DollarSign, Calendar, Layers, HelpCircle, X, Leaf, Sparkles, Wrench, Droplet, Microscope, Magnet, Cog, FileText, type LucideIcon } from 'lucide-react';
+import CurrencyInput from '@/components/ui/CurrencyInput';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/auth.service';
+import { quotesService } from '@/services/quotes.service';
+import api from '@/services/api';
+
+const maskCEP = (v: string) => v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{0,3})/, '$1-$2');
+
+// Minimum deadline: 2 days from today
+const minDeadline = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 2);
+  return d.toISOString().split('T')[0]; // YYYY-MM-DD
+};
 
 const schema = z.object({
-  title: z.string().min(5, 'Título deve ter no mínimo 5 caracteres'),
+  title:       z.string().min(5, 'Título deve ter no mínimo 5 caracteres'),
   description: z.string().min(20, 'Descreva melhor sua peça (mín. 20 caracteres)'),
-  width: z.coerce.number().optional(),
-  height: z.coerce.number().optional(),
-  depth: z.coerce.number().optional(),
-  material: z.string().optional(),
-  resistance: z.string().min(1, 'Selecione a resistência necessária'),
-  quantity: z.coerce.number().min(1),
-  budget: z.coerce.number().optional(),
-  deadline: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
+  width:       z.preprocess(v => (v === '' || v === undefined || v === null) ? undefined : Number(v), z.number().positive().optional()),
+  height:      z.preprocess(v => (v === '' || v === undefined || v === null) ? undefined : Number(v), z.number().positive().optional()),
+  depth:       z.preprocess(v => (v === '' || v === undefined || v === null) ? undefined : Number(v), z.number().positive().optional()),
+  material:    z.string().optional(),
+  resistance:  z.string().min(1, 'Selecione a resistência necessária'),
+  quantity:    z.coerce.number().min(1, 'Quantidade mínima é 1'),
+  budget:      z.preprocess(v => (v === '' || v === undefined || v === null) ? undefined : Number(v), z.number().positive().optional()),
+  deadline:    z.string().optional().refine(
+    v => !v || v >= minDeadline(),
+    'O prazo deve ser pelo menos 2 dias a partir de hoje'
+  ),
+  city:        z.string().optional(),
+  state:       z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -47,15 +63,15 @@ const STATES = [
   { code: 'TO', name: 'Tocantins' },
 ];
 
-const MATERIAL_INFO: Record<string, { desc: string; ideal: string; temp: string; icon: string }> = {
-  PLA:    { icon: '🌱', desc: 'Material mais comum e fácil de usar. Biodegradável, derivado de amido de milho. Bom acabamento superficial, mas amolece acima de ~60 °C.', ideal: 'Decoração, protótipos, brinquedos, peças internas.', temp: 'Até ~60 °C' },
-  'PLA+': { icon: '⭐', desc: 'Versão aprimorada do PLA com maior resistência ao impacto e à temperatura. Mantém o fácil manuseio do PLA comum.', ideal: 'Protótipos funcionais, uso geral com mais durabilidade.', temp: 'Até ~70 °C' },
-  ABS:    { icon: '🔩', desc: 'Plástico resistente a impactos e mais duro que o PLA. Suporta temperaturas mais altas, mas requer impressora fechada e ventilação.', ideal: 'Peças mecânicas leves, cases, objetos de uso frequente.', temp: 'Até ~100 °C' },
-  PETG:   { icon: '💧', desc: 'Equilíbrio entre PLA e ABS. Resistente à umidade e produtos químicos, com boa flexibilidade e transparência parcial.', ideal: 'Peças externas, recipientes, componentes que precisam de resistência moderada.', temp: 'Até ~80 °C' },
-  Resina: { icon: '🔬', desc: 'Alta precisão nos detalhes e superfície extremamente lisa. Frágil e sensível à luz UV após a impressão.', ideal: 'Miniaturas, joias, peças odontológicas, objetos com detalhes muito finos.', temp: 'Até ~50 °C' },
-  TPU:    { icon: '🧲', desc: 'Material borrachoso, flexível e elástico. Resistente à abrasão e impactos. Difícil de imprimir em alta velocidade.', ideal: 'Capas de celular, solas, juntas, peças que precisam de flexibilidade.', temp: 'Até ~90 °C' },
-  Nylon:  { icon: '⚙️', desc: 'Alta resistência mecânica e ao desgaste. Absorve umidade do ambiente, o que exige armazenamento adequado do filamento.', ideal: 'Engrenagens, peças estruturais, componentes de alta carga e atrito.', temp: 'Até ~120 °C' },
-  Outro:  { icon: '📝', desc: 'Caso você tenha um material específico em mente (como fibra de carbono, madeira, metal composto), descreva-o no campo de descrição da peça.', ideal: 'Aplicações especiais conforme especificado.', temp: 'Variável' },
+const MATERIAL_INFO: Record<string, { desc: string; ideal: string; temp: string; icon: LucideIcon }> = {
+  PLA:    { icon: Leaf,       desc: 'Material mais comum e fácil de usar. Biodegradável, derivado de amido de milho. Bom acabamento superficial, mas amolece acima de ~60 °C.', ideal: 'Decoração, protótipos, brinquedos, peças internas.', temp: 'Até ~60 °C' },
+  'PLA+': { icon: Sparkles,   desc: 'Versão aprimorada do PLA com maior resistência ao impacto e à temperatura. Mantém o fácil manuseio do PLA comum.', ideal: 'Protótipos funcionais, uso geral com mais durabilidade.', temp: 'Até ~70 °C' },
+  ABS:    { icon: Wrench,     desc: 'Plástico resistente a impactos e mais duro que o PLA. Suporta temperaturas mais altas, mas requer impressora fechada e ventilação.', ideal: 'Peças mecânicas leves, cases, objetos de uso frequente.', temp: 'Até ~100 °C' },
+  PETG:   { icon: Droplet,    desc: 'Equilíbrio entre PLA e ABS. Resistente à umidade e produtos químicos, com boa flexibilidade e transparência parcial.', ideal: 'Peças externas, recipientes, componentes que precisam de resistência moderada.', temp: 'Até ~80 °C' },
+  Resina: { icon: Microscope, desc: 'Alta precisão nos detalhes e superfície extremamente lisa. Frágil e sensível à luz UV após a impressão.', ideal: 'Miniaturas, joias, peças odontológicas, objetos com detalhes muito finos.', temp: 'Até ~50 °C' },
+  TPU:    { icon: Magnet,     desc: 'Material borrachoso, flexível e elástico. Resistente à abrasão e impactos. Difícil de imprimir em alta velocidade.', ideal: 'Capas de celular, solas, juntas, peças que precisam de flexibilidade.', temp: 'Até ~90 °C' },
+  Nylon:  { icon: Cog,        desc: 'Alta resistência mecânica e ao desgaste. Absorve umidade do ambiente, o que exige armazenamento adequado do filamento.', ideal: 'Engrenagens, peças estruturais, componentes de alta carga e atrito.', temp: 'Até ~120 °C' },
+  Outro:  { icon: FileText,   desc: 'Caso você tenha um material específico em mente (como fibra de carbono, madeira, metal composto), descreva-o no campo de descrição da peça.', ideal: 'Aplicações especiais conforme especificado.', temp: 'Variável' },
 };
 
 export default function QuoteRequest() {
@@ -72,53 +88,76 @@ export default function QuoteRequest() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [showMaterialInfo, setShowMaterialInfo] = useState(false);
-  const [cityOptions, setCityOptions] = useState<string[]>([]);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const prefillCityRef = useRef<string | null>(null);
+  // Delivery address
+  const [deliveryMode, setDeliveryMode] = useState<'saved' | 'new'>('saved');
+  const [savedAddress, setSavedAddress] = useState<{
+    label: string; zipCode: string; street: string; number: string;
+    complement?: string; district: string; city: string; state: string;
+  } | null>(null);
+  const [loadingAddress, setLoadingAddress] = useState(false);
+  const [newAddr, setNewAddr] = useState({ cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '' });
+  const [loadingCep, setLoadingCep] = useState(false);
+  // Browser geolocation — used to notify nearby makers
+  const [geoCoords, setGeoCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
-  const watchedState = watch('state');
-
-  // Pre-fill state from user registration address (city fills after cities load)
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('printhub_user_location');
-      if (stored) {
-        const { city, state } = JSON.parse(stored) as { city: string; state: string };
-        if (state) setValue('state', state);
-        if (city)  prefillCityRef.current = city;
-      }
-    } catch { /* silent */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setGeoCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => {} // silent — works without location (notifies all makers)
+      );
+    }
   }, []);
 
+  // Fetch saved address from profile
   useEffect(() => {
-    setValue('city', '');
-    if (!watchedState) { setCityOptions([]); return; }
-    setLoadingCities(true);
-    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${watchedState}/municipios?orderBy=nome`)
-      .then((r) => r.json())
-      .then((data: { nome: string }[]) => {
-        const names = data.map((c) => c.nome);
-        setCityOptions(names);
-        if (prefillCityRef.current && names.includes(prefillCityRef.current)) {
-          setValue('city', prefillCityRef.current);
-          prefillCityRef.current = null;
-        }
-      })
-      .catch(() => setCityOptions([]))
-      .finally(() => setLoadingCities(false));
-  }, [watchedState, setValue]);
+    setLoadingAddress(true);
+    authService.getAddress()
+      .then(addr => setSavedAddress(addr))
+      .catch(() => {})
+      .finally(() => setLoadingAddress(false));
+  }, []);
+
+  // Sync city/state into form from selected address (maker matching)
+  useEffect(() => {
+    if (deliveryMode === 'saved' && savedAddress) {
+      setValue('city', savedAddress.city);
+      setValue('state', savedAddress.state);
+    }
+  }, [deliveryMode, savedAddress, setValue]);
+
+  useEffect(() => {
+    if (deliveryMode === 'new') {
+      setValue('city', newAddr.cidade);
+      setValue('state', newAddr.uf);
+    }
+  }, [deliveryMode, newAddr.cidade, newAddr.uf, setValue]);
+
+  const lookupNewCEP = async (cep: string) => {
+    const digits = cep.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    setLoadingCep(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const d = await r.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
+      if (!d.erro) {
+        setNewAddr(prev => ({
+          ...prev,
+          logradouro: d.logradouro || '',
+          bairro:     d.bairro     || '',
+          cidade:     d.localidade || '',
+          uf:         d.uf         || '',
+        }));
+      }
+    } catch { /* silent */ }
+    finally { setLoadingCep(false); }
+  };
 
   const handleNext = async () => {
-    if (step === 1) {
-      const valid = await trigger(['title', 'description']);
-      if (!valid) return;
-    }
-    if (step === 2) {
-      const valid = await trigger(['resistance']);
-      if (!valid) return;
-    }
-    setStep((s) => s + 1);
+    let valid = true;
+    if (step === 1) valid = await trigger(['title', 'description']);
+    if (step === 2) valid = await trigger(['resistance']);
+    if (valid) setStep((s) => s + 1);
   };
 
   const onSubmit = async (data: FormData) => {
@@ -127,13 +166,60 @@ export default function QuoteRequest() {
       return;
     }
     try {
-      console.log('Quote request:', { ...data, stlFile, imageFile });
-      success('Solicitação enviada!', 'Makers próximos serão notificados.');
-      navigate('/dashboard/client/quotes');
-    } catch {
-      error('Erro ao enviar', 'Tente novamente em instantes.');
+      // Faz upload dos arquivos antes de criar o orçamento
+      let fileUrl:  string | undefined;
+      let imageUrl: string | undefined;
+
+      const uploadFile = async (file: File, endpoint: string): Promise<string> => {
+        const form = new FormData();
+        form.append('file', file);
+        const { data: r } = await api.post(`/uploads/${endpoint}`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return (r as { data: { url: string } }).data.url;
+      };
+
+      if (stlFile)   fileUrl  = await uploadFile(stlFile,   'stl');
+      if (imageFile) imageUrl = await uploadFile(imageFile, 'image');
+
+      await quotesService.create({
+        title:       data.title,
+        description: data.description,
+        width:       data.width,
+        height:      data.height,
+        depth:       data.depth,
+        material:    data.material,
+        resistance:  data.resistance,
+        quantity:    data.quantity,
+        budget:      data.budget,
+        deadline:    data.deadline,
+        city:        data.city,
+        state:       data.state,
+        fileUrl,
+        imageUrl,
+        ...(geoCoords ?? {}),
+      });
+      success(
+        'Solicitação enviada!',
+        geoCoords
+          ? 'Os makers mais próximos de você serão notificados.'
+          : 'Os makers serão notificados e enviarão propostas em breve.'
+      );
+      navigate('/dashboard/client');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || 'Tente novamente em instantes.';
+      error('Erro ao enviar', msg);
     }
   };
+
+  // Declarado APÓS onSubmit para evitar referência antes da inicialização
+  const handleFormSubmit = handleSubmit(onSubmit, (errs) => {
+    console.log('Erros de validação:', errs);
+    if (errs.title || errs.description) { setStep(1); return; }
+    if (errs.resistance || errs.quantity || errs.width || errs.height || errs.depth) { setStep(2); return; }
+    // Erro no step 3 (deadline, city, state) — não redireciona, mostra no mesmo step
+  });
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
@@ -171,7 +257,10 @@ export default function QuoteRequest() {
           ))}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form
+          onSubmit={(e) => e.preventDefault()}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+        >
           <div className="glass rounded-2xl p-8 border border-white/10 space-y-6">
             {step === 1 && (
               <>
@@ -239,7 +328,7 @@ export default function QuoteRequest() {
                             return (
                               <div key={m} className="glass rounded-xl p-4 border border-white/5 space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xl">{info.icon}</span>
+                                  <info.icon size={18} className="text-white" strokeWidth={1.5} />
                                   <span className="font-bold text-white">{m}</span>
                                   <span className="ml-auto text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{info.temp}</span>
                                 </div>
@@ -313,51 +402,181 @@ export default function QuoteRequest() {
 
             {step === 3 && (
               <>
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Estado */}
-                  <div>
-                    <label className="label flex items-center gap-1">
-                      <MapPin size={14} />Estado
-                    </label>
-                    <select className="input" {...register('state')}>
-                      <option value="">Selecione o estado...</option>
-                      {STATES.map(({ code, name }) => (
-                        <option key={code} value={code}>{name} ({code})</option>
-                      ))}
-                    </select>
+                {/* ── Endereço de entrega ── */}
+                <div className="space-y-3">
+                  <label className="label flex items-center gap-1">
+                    <MapPin size={14} /> Endereço de entrega
+                  </label>
+
+                  {/* Radio cards */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {(['saved', 'new'] as const).map((mode) => {
+                      const active = deliveryMode === mode;
+                      return (
+                        <label
+                          key={mode}
+                          className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                            active
+                              ? 'border-neon-blue/40 bg-neon-blue/5 text-white'
+                              : 'border-white/10 text-gray-400 hover:border-white/20'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="deliveryMode"
+                            value={mode}
+                            checked={active}
+                            onChange={() => setDeliveryMode(mode)}
+                            className="sr-only"
+                          />
+                          {/* Custom radio dot */}
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            active ? 'border-neon-blue' : 'border-gray-500'
+                          }`}>
+                            {active && <div className="w-2 h-2 rounded-full bg-neon-blue" />}
+                          </div>
+                          <span className="text-sm font-medium leading-snug">
+                            {mode === 'saved' ? 'Utilizar endereço cadastrado' : 'Novo endereço'}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
 
-                  {/* Cidade — carregada via IBGE */}
-                  <div>
-                    <label className="label flex items-center gap-1">
-                      <MapPin size={14} />Cidade
-                    </label>
-                    <select
-                      className="input disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={!watchedState || loadingCities}
-                      {...register('city')}
-                    >
-                      <option value="">
-                        {!watchedState
-                          ? 'Selecione um estado primeiro'
-                          : loadingCities
-                          ? 'Carregando cidades...'
-                          : 'Selecione a cidade'}
-                      </option>
-                      {cityOptions.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Saved address card */}
+                  {deliveryMode === 'saved' && (
+                    loadingAddress ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                        <span className="w-3 h-3 border border-neon-blue border-t-transparent rounded-full animate-spin shrink-0" />
+                        Carregando endereço...
+                      </div>
+                    ) : savedAddress ? (
+                      <div className="glass rounded-xl p-4 border border-white/10 space-y-1">
+                        <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest mb-2">{savedAddress.label}</p>
+                        <p className="text-sm text-white">
+                          {savedAddress.street}, {savedAddress.number}
+                          {savedAddress.complement ? <span className="text-gray-400"> — {savedAddress.complement}</span> : null}
+                        </p>
+                        <p className="text-sm text-gray-400">{savedAddress.district}</p>
+                        <p className="text-sm text-gray-300">{savedAddress.city} — {savedAddress.state}</p>
+                        <p className="text-xs text-gray-500 mt-1">CEP {savedAddress.zipCode}</p>
+                      </div>
+                    ) : (
+                      <div className="glass rounded-xl p-4 border border-yellow-500/20 bg-yellow-500/5 flex gap-3 items-start">
+                        <Info size={15} className="text-yellow-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-yellow-300 font-medium">Nenhum endereço cadastrado</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Cadastre um endereço nas configurações ou selecione "Novo endereço".
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {/* New address form */}
+                  {deliveryMode === 'new' && (
+                    <div className="space-y-3">
+                      {/* CEP */}
+                      <div className="relative">
+                        <Input
+                          label="CEP *"
+                          placeholder="00000-000"
+                          icon={<MapPin size={16} />}
+                          value={newAddr.cep}
+                          onChange={e => setNewAddr(prev => ({ ...prev, cep: maskCEP(e.target.value) }))}
+                          onBlur={e => lookupNewCEP(e.target.value)}
+                        />
+                        {loadingCep && (
+                          <span className="absolute right-3 top-9 text-xs text-neon-blue animate-pulse flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 border border-neon-blue border-t-transparent rounded-full animate-spin" />
+                            Buscando...
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Logradouro + Número */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2">
+                          <Input
+                            label="Logradouro *"
+                            placeholder="Rua, Avenida..."
+                            value={newAddr.logradouro}
+                            onChange={e => setNewAddr(prev => ({ ...prev, logradouro: e.target.value }))}
+                          />
+                        </div>
+                        <Input
+                          label="Número *"
+                          placeholder="123"
+                          value={newAddr.numero}
+                          onChange={e => setNewAddr(prev => ({ ...prev, numero: e.target.value }))}
+                        />
+                      </div>
+
+                      {/* Complemento + Bairro */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          label="Complemento"
+                          placeholder="Apto, Bloco..."
+                          value={newAddr.complemento}
+                          onChange={e => setNewAddr(prev => ({ ...prev, complemento: e.target.value }))}
+                        />
+                        <Input
+                          label="Bairro *"
+                          placeholder="..."
+                          value={newAddr.bairro}
+                          onChange={e => setNewAddr(prev => ({ ...prev, bairro: e.target.value }))}
+                        />
+                      </div>
+
+                      {/* Cidade + UF */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2">
+                          <Input
+                            label="Cidade *"
+                            placeholder="..."
+                            value={newAddr.cidade}
+                            onChange={e => setNewAddr(prev => ({ ...prev, cidade: e.target.value }))}
+                          />
+                        </div>
+                        <Input
+                          label="UF *"
+                          placeholder="SP"
+                          value={newAddr.uf}
+                          onChange={e => setNewAddr(prev => ({ ...prev, uf: e.target.value.toUpperCase().slice(0, 2) }))}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <Input label="Orçamento máximo (R$)" type="number" placeholder="Ex: 150" icon={<DollarSign size={16} />} {...register('budget')} />
-                <Input label="Prazo desejado" type="date" icon={<Calendar size={16} />} {...register('deadline')} />
+                <CurrencyInput
+                  label="Orçamento máximo (R$)"
+                  icon={<DollarSign size={16} />}
+                  value={watch('budget') as number | undefined}
+                  onChange={v => setValue('budget', v || undefined, { shouldValidate: true })}
+                />
+
+                {/* Deadline with min 2 days + shipping notice */}
+                <div>
+                  <Input
+                    label="Prazo desejado"
+                    type="date"
+                    icon={<Calendar size={16} />}
+                    min={minDeadline()}
+                    error={errors.deadline?.message}
+                    {...register('deadline')}
+                  />
+                  <p className="mt-1.5 text-xs text-gray-500 flex items-center gap-1">
+                    <Info size={11} className="text-yellow-400 shrink-0" />
+                    <span>Este prazo é para fabricação e <strong className="text-yellow-400">não inclui o tempo de transporte</strong>.</span>
+                  </p>
+                </div>
 
                 <div className="glass rounded-xl p-4 border border-neon-blue/20 flex gap-3">
                   <Info size={16} className="text-neon-blue shrink-0 mt-0.5" />
                   <p className="text-sm text-gray-400">
-                    Os makers mais próximos serão notificados automaticamente e poderão enviar suas propostas em até 24h. Você terá 7 dias para aceitar a melhor oferta.
+                    Os makers serão notificados e poderão enviar suas propostas em até 24h. Você terá 7 dias para aceitar a melhor oferta.
                   </p>
                 </div>
               </>
@@ -372,7 +591,7 @@ export default function QuoteRequest() {
             {step < 3 ? (
               <Button type="button" onClick={handleNext}>Próximo</Button>
             ) : (
-              <Button type="submit" loading={isSubmitting}>
+              <Button type="button" loading={isSubmitting} onClick={() => handleFormSubmit()}>
                 Enviar Solicitação
               </Button>
             )}

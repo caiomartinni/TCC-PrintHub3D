@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import api from '@/services/api';
 
 const schema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -23,6 +24,14 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const from = (location.state as { from?: string })?.from || '/';
 
+  const [stats, setStats] = useState({ totalMakers: 0, totalProducts: 0, totalOrders: 0 });
+
+  useEffect(() => {
+    api.get('/stats').then(r => {
+      setStats((r.data as { data: typeof stats }).data);
+    }).catch(() => {});
+  }, []);
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
@@ -37,7 +46,21 @@ export default function Login() {
         '/dashboard/client';
       navigate(from !== '/' ? from : dashPath);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Credenciais inválidas';
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } }; code?: string };
+
+      let msg: string;
+      if (!axiosErr.response) {
+        msg = 'Não foi possível conectar ao servidor. Verifique se o backend está rodando (iniciar.bat).';
+      } else {
+        const serverMsg = axiosErr.response.data?.message ?? '';
+        if (serverMsg.includes('suspensa') || serverMsg.includes('desativada')) {
+          msg = serverMsg; // Show the suspension message exactly
+        } else if (axiosErr.response.status === 401) {
+          msg = 'E-mail ou senha incorretos.';
+        } else {
+          msg = serverMsg || 'Erro ao entrar. Tente novamente.';
+        }
+      }
       error('Erro ao entrar', msg);
     }
   };
@@ -58,11 +81,15 @@ export default function Login() {
             <p className="text-gray-400 text-lg max-w-sm">
               O marketplace de impressão 3D mais completo do Brasil.
             </p>
-            <div className="grid grid-cols-2 gap-4 mt-12">
-              {['847 Makers', '12.4k Produtos', '38k Pedidos', '98% Satisfação'].map((s) => (
-                <div key={s} className="glass rounded-xl p-4 border border-white/5 text-left">
-                  <div className="text-xl font-bold gradient-text">{s.split(' ')[0]}</div>
-                  <div className="text-xs text-gray-400">{s.split(' ').slice(1).join(' ')}</div>
+            <div className="grid grid-cols-3 gap-4 mt-12">
+              {[
+                { value: stats.totalMakers.toLocaleString('pt-BR'),   label: 'Makers' },
+                { value: stats.totalProducts.toLocaleString('pt-BR'), label: 'Produtos' },
+                { value: stats.totalOrders.toLocaleString('pt-BR'),   label: 'Pedidos' },
+              ].map(({ value, label }) => (
+                <div key={label} className="glass rounded-xl p-4 border border-white/5 text-left">
+                  <div className="text-xl font-bold gradient-text">{value}</div>
+                  <div className="text-xs text-gray-400">{label}</div>
                 </div>
               ))}
             </div>

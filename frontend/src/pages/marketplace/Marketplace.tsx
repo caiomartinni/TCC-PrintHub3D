@@ -1,55 +1,90 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, Grid3x3, List } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import ProductCard from '@/components/shared/ProductCard';
+import CategoryIcon from '@/components/shared/CategoryIcon';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Badge from '@/components/ui/Badge';
-import { mockProducts, mockCategories } from '@/data/mock';
-import type { Product } from '@/types';
+import { productsService } from '@/services/products.service';
+import api from '@/services/api';
+import type { Product, Category } from '@/types';
 
 const MATERIALS = ['PLA', 'ABS', 'PETG', 'Resina', 'TPU', 'Nylon', 'PLA+'];
 const SORT_OPTIONS = [
-  { label: 'Mais Recentes', value: 'createdAt' },
-  { label: 'Menor Preço', value: 'price_asc' },
-  { label: 'Maior Preço', value: 'price_desc' },
-  { label: 'Mais Vendidos', value: 'totalSales' },
-  { label: 'Melhor Avaliação', value: 'rating' },
+  { label: 'Mais Recentes',   value: 'createdAt' },
+  { label: 'Menor Preço',     value: 'price_asc' },
+  { label: 'Maior Preço',     value: 'price_desc' },
+  { label: 'Mais Vendidos',   value: 'totalSales' },
+  { label: 'Melhor Avaliação',value: 'rating' },
 ];
 
 export default function Marketplace() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
+
+  const [allProducts,       setAllProducts]       = useState<Product[]>([]);
+  const [products,          setProducts]          = useState<Product[]>([]);
+  const [categories,        setCategories]        = useState<Category[]>([]);
+  const [loading,           setLoading]           = useState(true);
+  const [search,            setSearch]            = useState(searchParams.get('search') || '');
+  const [selectedCategory,  setSelectedCategory]  = useState(searchParams.get('category') || '');
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showFilters, setShowFilters] = useState(false);
+  const [priceRange,        setPriceRange]        = useState({ min: '', max: '' });
+  const [sortBy,            setSortBy]            = useState('createdAt');
+  const [viewMode,          setViewMode]          = useState<'grid' | 'list'>('grid');
+  const [showFilters,       setShowFilters]       = useState(false);
+  const [total,             setTotal]             = useState(0);
+
+  // Fetch categories once on mount
+  useEffect(() => {
+    api.get('/categories')
+      .then((r) => setCategories((r.data as { data: Category[] }).data))
+      .catch(() => {});
+  }, []);
+
+  // Fetch products from API when search / category / sortBy change
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, string | number> = { limit: 200 };
+      if (search)           params.search   = search;
+      if (selectedCategory) params.category = selectedCategory;
+
+      if (sortBy === 'price_asc')  { params.sortBy = 'price'; params.order = 'asc'; }
+      else if (sortBy === 'price_desc') { params.sortBy = 'price'; params.order = 'desc'; }
+      else if (sortBy === 'totalSales') { params.sortBy = 'totalSales'; params.order = 'desc'; }
+      else if (sortBy === 'rating')     { params.sortBy = 'rating';     params.order = 'desc'; }
+      else { params.sortBy = 'createdAt'; params.order = 'desc'; }
+
+      const res = await productsService.getAll(params);
+      setAllProducts(res.data);
+      setTotal(res.pagination.total);
+    } catch {
+      setAllProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, selectedCategory, sortBy]);
 
   useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => {
-      let filtered = [...mockProducts];
-      if (search) filtered = filtered.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()) || p.description.toLowerCase().includes(search.toLowerCase()));
-      if (selectedCategory) filtered = filtered.filter((p) => p.category?.slug === selectedCategory);
-      if (selectedMaterials.length) filtered = filtered.filter((p) => selectedMaterials.includes(p.material));
-      if (priceRange.min) filtered = filtered.filter((p) => p.price >= parseFloat(priceRange.min));
-      if (priceRange.max) filtered = filtered.filter((p) => p.price <= parseFloat(priceRange.max));
-      if (sortBy === 'price_asc') filtered.sort((a, b) => a.price - b.price);
-      else if (sortBy === 'price_desc') filtered.sort((a, b) => b.price - a.price);
-      else if (sortBy === 'totalSales') filtered.sort((a, b) => b.totalSales - a.totalSales);
-      else if (sortBy === 'rating') filtered.sort((a, b) => b.rating - a.rating);
-      setProducts(filtered);
-      setLoading(false);
-    }, 300);
+    const timer = setTimeout(fetchProducts, 350);
     return () => clearTimeout(timer);
-  }, [search, selectedCategory, selectedMaterials, priceRange, sortBy]);
+  }, [fetchProducts]);
+
+  // Client-side filter for materials + price (no extra API call)
+  useEffect(() => {
+    let filtered = [...allProducts];
+    if (selectedMaterials.length)
+      filtered = filtered.filter((p) => selectedMaterials.includes(p.material));
+    if (priceRange.min)
+      filtered = filtered.filter((p) => p.price >= parseFloat(priceRange.min));
+    if (priceRange.max)
+      filtered = filtered.filter((p) => p.price <= parseFloat(priceRange.max));
+    setProducts(filtered);
+  }, [allProducts, selectedMaterials, priceRange]);
 
   const toggleMaterial = (m: string) =>
     setSelectedMaterials((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]);
@@ -69,7 +104,9 @@ export default function Marketplace() {
         <div className="glass-dark border-b border-white/5 py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-black text-white mb-2">Marketplace</h1>
-            <p className="text-gray-400">Explore {mockProducts.length}+ produtos únicos de impressão 3D</p>
+            <p className="text-gray-400">
+              {loading ? 'Carregando produtos...' : `${total} produto(s) disponível(is)`}
+            </p>
             <div className="flex flex-col sm:flex-row gap-3 mt-6">
               <div className="flex-1 relative">
                 <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -117,13 +154,13 @@ export default function Marketplace() {
                     <button onClick={() => setSelectedCategory('')} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!selectedCategory ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                       Todas
                     </button>
-                    {mockCategories.map((cat) => (
+                    {categories.map((cat) => (
                       <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(selectedCategory === cat.slug ? '' : cat.slug)}
                         className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${selectedCategory === cat.slug ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                       >
-                        <span>{cat.icon} {cat.name}</span>
+                        <span className="flex items-center gap-2"><CategoryIcon slug={cat.slug} size={15} className={selectedCategory === cat.slug ? 'text-neon-blue' : 'text-gray-400'} />{cat.name}</span>
                         <span className="text-xs opacity-60">{cat._count?.products}</span>
                       </button>
                     ))}
@@ -173,14 +210,20 @@ export default function Marketplace() {
                 <div className="flex justify-center py-20"><LoadingSpinner size="lg" /></div>
               ) : products.length === 0 ? (
                 <div className="text-center py-20">
-                  <div className="text-5xl mb-4">🔍</div>
+                  <Search size={48} className="text-gray-600 mx-auto mb-4" strokeWidth={1.5} />
                   <h3 className="text-xl font-bold text-white mb-2">Nenhum produto encontrado</h3>
                   <p className="text-gray-400 mb-6">Tente ajustar os filtros ou buscar por outros termos</p>
                   <Button variant="secondary" onClick={clearFilters}>Limpar Filtros</Button>
                 </div>
               ) : (
-                <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5' : 'space-y-4'}>
-                  {products.map((p) => <ProductCard key={p.id} product={p} />)}
+                <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5' : 'space-y-2'}>
+                  {products.map((p) => (
+                    <ProductCard
+                      key={p.id}
+                      product={{ ...p, images: (p.images as unknown as string[]) ?? [] }}
+                      viewMode={viewMode}
+                    />
+                  ))}
                 </div>
               )}
             </div>

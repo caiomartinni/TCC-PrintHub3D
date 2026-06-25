@@ -3,6 +3,7 @@ import prisma from '../utils/prisma.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { AuthRequest } from '../types/index.js';
 import { markAsRead, markAllAsRead } from '../services/notification.service.js';
+import logger from '../utils/logger.js';
 
 export const getNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -14,8 +15,20 @@ export const getNotifications = async (req: AuthRequest, res: Response): Promise
     const unread = notifications.filter((n) => !n.isRead).length;
     successResponse(res, { notifications, unread });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao buscar notificações', 500);
+  }
+};
+
+export const getUnreadCount = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const count = await prisma.notification.count({
+      where: { userId: req.user!.id, isRead: false },
+    });
+    successResponse(res, { count });
+  } catch (err) {
+    logger.error(err);
+    errorResponse(res, 'Erro ao buscar contagem', 500);
   }
 };
 
@@ -25,7 +38,7 @@ export const readNotification = async (req: AuthRequest, res: Response): Promise
     await markAsRead(id, req.user!.id);
     successResponse(res, null, 'Notificação lida');
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao marcar notificação', 500);
   }
 };
@@ -35,7 +48,7 @@ export const readAllNotifications = async (req: AuthRequest, res: Response): Pro
     await markAllAsRead(req.user!.id);
     successResponse(res, null, 'Todas as notificações lidas');
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     errorResponse(res, 'Erro ao marcar notificações', 500);
   }
 };

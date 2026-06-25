@@ -2,8 +2,9 @@ import { Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt.js';
 import { errorResponse } from '../utils/response.js';
 import { AuthRequest } from '../types/index.js';
+import prisma from '../utils/prisma.js';
 
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     errorResponse(res, 'Token de autenticação necessário', 401);
@@ -18,6 +19,25 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
 
   try {
     const payload = verifyToken(token);
+
+    // Always verify account is still active in the DB.
+    // This ensures suspended/deactivated users lose access immediately,
+    // even if they still have a valid JWT.
+    const user = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { isActive: true },
+    });
+
+    if (!user) {
+      errorResponse(res, 'Conta não encontrada', 401);
+      return;
+    }
+
+    if (!user.isActive) {
+      errorResponse(res, 'Conta suspensa ou desativada. Entre em contato com o suporte.', 401);
+      return;
+    }
+
     req.user = payload;
     next();
   } catch {

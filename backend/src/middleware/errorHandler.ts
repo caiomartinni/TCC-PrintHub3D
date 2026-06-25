@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import logger from '../utils/logger.js';
 
 export const errorHandler = (
   err: Error & { statusCode?: number },
@@ -6,7 +7,7 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
-  console.error(err.stack);
+  logger.error(err, 'Erro não tratado');
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
     success: false,

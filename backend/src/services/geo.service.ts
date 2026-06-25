@@ -1,5 +1,6 @@
 import { getDistance, convertDistance } from 'geolib';
 import { GeoPoint } from '../types/index.js';
+import logger from '../utils/logger.js';
 
 export interface MakerWithDistance {
   id: string;
@@ -40,13 +41,13 @@ export const findNearestMakers = <T extends MakerWithDistance>(
 
 export const geocodeAddress = async (address: string): Promise<GeoPoint | null> => {
   // TODO: Integrate with Google Maps Geocoding API or ViaCEP + IBGE
-  console.log('[GeoService] geocodeAddress - not yet integrated', address);
+  logger.debug({ address }, '[GeoService] geocodeAddress - not yet integrated');
   return null;
 };
 
 export const getCoordinatesFromCEP = async (cep: string): Promise<GeoPoint | null> => {
   // TODO: Integrate with ViaCEP to get lat/lng from CEP
   // ViaCEP only returns address, lat/lng requires geocoding
-  console.log('[GeoService] getCoordinatesFromCEP - not yet integrated', cep);
+  logger.debug({ cep }, '[GeoService] getCoordinatesFromCEP - not yet integrated');
   return null;
 };
