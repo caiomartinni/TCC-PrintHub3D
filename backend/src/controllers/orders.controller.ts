@@ -179,6 +179,17 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
+const STATUS_PT: Record<string, string> = {
+  PENDING:       'Aguardando pagamento',
+  CONFIRMED:     'Confirmado',
+  PRINTING:      'Em impressão',
+  QUALITY_CHECK: 'Controle de qualidade',
+  SHIPPED:       'Enviado',
+  DELIVERED:     'Entregue',
+  CANCELLED:     'Cancelado',
+  REFUNDED:      'Reembolsado',
+};
+
 export const updateOrderStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
@@ -236,7 +247,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
         tracking: {
           create: {
             status,
-            description: description || `Status atualizado para ${status}`,
+            description: description || `Status atualizado para: ${STATUS_PT[status] ?? status}`,
             location,
             trackingCode,
             carrier,
@@ -292,7 +303,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
         order.clientId,
         NotificationType.ORDER_UPDATE,
         'Pedido atualizado',
-        `Seu pedido foi atualizado para: ${status}`
+        `Seu pedido foi atualizado para: ${STATUS_PT[status] ?? status}`
       );
     }
 
