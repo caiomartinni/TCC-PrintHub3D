@@ -15,7 +15,22 @@ import { authService } from '@/services/auth.service';
 import { quotesService } from '@/services/quotes.service';
 import api from '@/services/api';
 
-const maskCEP = (v: string) => v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{0,3})/, '$1-$2');
+const maskCEP  = (v: string) => v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{0,3})/, '$1-$2');
+
+// máscara de data: formata digitação como DD/MM/AAAA
+const maskDate = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+};
+
+// converte DD/MM/AAAA → YYYY-MM-DD para envio à API
+const dateToISO = (masked: string): string => {
+  const [dd, mm, yyyy] = masked.split('/');
+  if (!dd || !mm || !yyyy || yyyy.length !== 4) return '';
+  return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+};
 
 const minDeadline = () => {
   const d = new Date();
@@ -33,10 +48,12 @@ const schema = z.object({
   resistance:  z.string().min(1, 'Selecione a resistência necessária'),
   quantity:    z.coerce.number().min(1, 'Quantidade mínima é 1'),
   budget:      z.preprocess(v => (v === '' || v === undefined || v === null) ? undefined : Number(v), z.number().positive().optional()),
-  deadline:    z.string().optional().refine(
-    v => !v || v >= minDeadline(),
-    'O prazo deve ser pelo menos 2 dias a partir de hoje'
-  ),
+  // valida formato DD/MM/AAAA e prazo mínimo de 2 dias
+  deadline: z.string().optional().refine(v => {
+    if (!v || v.length < 10) return true;
+    const iso = dateToISO(v);
+    return iso.length === 10 && iso >= minDeadline();
+  }, 'O prazo deve ser uma data válida com pelo menos 2 dias a partir de hoje'),
   city:        z.string().optional(),
   state:       z.string().optional(),
 });
@@ -188,7 +205,7 @@ export default function QuoteRequest() {
         resistance:  data.resistance,
         quantity:    data.quantity,
         budget:      data.budget,
-        deadline:    data.deadline,
+        deadline:    data.deadline ? dateToISO(data.deadline) : undefined,
         city:        data.city,
         state:       data.state,
         fileUrl,
@@ -556,11 +573,13 @@ export default function QuoteRequest() {
                 <div>
                   <Input
                     label="Prazo desejado"
-                    type="date"
+                    type="text"
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
                     icon={<Calendar size={16} />}
-                    min={minDeadline()}
                     error={errors.deadline?.message}
                     {...register('deadline')}
+                    onChange={e => setValue('deadline', maskDate(e.target.value), { shouldValidate: true })}
                   />
                   <p className="mt-1.5 text-xs text-gray-500 flex items-center gap-1">
                     <Info size={11} className="text-yellow-400 shrink-0" />

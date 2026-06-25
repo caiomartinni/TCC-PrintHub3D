@@ -18,6 +18,7 @@ const maskCPF    = (v: string) => v.replace(/\D/g,'').slice(0,11).replace(/(\d{3
 const maskCNPJ   = (v: string) => v.replace(/\D/g,'').slice(0,14).replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,'$1.$2.$3/$4-$5');
 const maskPhone  = (v: string) => { const d=v.replace(/\D/g,'').slice(0,11); return d.length<=10?d.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3'):d.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3'); };
 const maskCEP    = (v: string) => v.replace(/\D/g,'').slice(0,8).replace(/(\d{5})(\d{0,3})/,'$1-$2');
+const maskDate   = (v: string) => { const d=v.replace(/\D/g,'').slice(0,8); if(d.length<=2)return d; if(d.length<=4)return `${d.slice(0,2)}/${d.slice(2)}`; return `${d.slice(0,2)}/${d.slice(2,4)}/${d.slice(4)}`; };
 
 function isValidCPF(raw: string): boolean {
   const d = raw.replace(/\D/g, '');
