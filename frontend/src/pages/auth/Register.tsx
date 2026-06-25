@@ -268,7 +268,9 @@ export default function Register() {
 
   const Logo = () => (
     <Link to="/" className="flex items-center gap-2 mb-8 justify-center">
-      <img src="/logo.jpg" alt="PrintHub3D" className="w-8 h-8 rounded-lg object-contain bg-white p-0.5" />
+      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
+        <Printer size={16} className="text-white" />
+      </div>
       <span className="font-bold text-white text-xl">Print<span className="gradient-text">Hub3D</span></span>
     </Link>
   );

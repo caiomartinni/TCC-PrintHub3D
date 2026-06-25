@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingBag, FileText, Heart, Star, DollarSign, Users, User, BarChart3, Shield, LogOut } from 'lucide-react';
+import { Printer, LayoutDashboard, Package, ShoppingBag, FileText, Heart, Star, DollarSign, Users, User, BarChart3, Shield, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/utils/cn';
@@ -96,7 +96,9 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           onClick={onClose}
           className="flex items-center gap-2 px-6 py-5 border-b border-white/5 hover:opacity-80 transition-opacity"
         >
-          <img src="/logo.jpg" alt="PrintHub3D" className="w-8 h-8 rounded-lg object-contain bg-white p-0.5" />
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
+            <Printer size={16} className="text-white" />
+          </div>
           <span className="font-bold text-white text-xl">
             Print<span className="gradient-text">Hub3D</span>
           </span>

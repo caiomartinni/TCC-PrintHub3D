@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Printer } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -8,7 +9,9 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <img src="/logo.jpg" alt="PrintHub3D" className="w-8 h-8 rounded-lg object-contain bg-white p-0.5" />
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
+                <Printer size={16} className="text-white" />
+              </div>
               <span className="font-bold text-white text-xl">Print<span className="gradient-text">Hub3D</span></span>
             </Link>
             <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
