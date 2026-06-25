@@ -21,7 +21,6 @@ export default function ResetPassword() {
   const [error,     setError]     = useState('');
   const [success,   setSuccess]   = useState(false);
 
-  // Valida token e carrega info do usuário
   useEffect(() => {
     if (!token) { setTokenErr('Link inválido. Solicite um novo.'); setLoadingToken(false); return; }
     api.get(`/auth/reset-password/${token}`)

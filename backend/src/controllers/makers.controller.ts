@@ -98,7 +98,6 @@ export const updateMakerProfile = async (req: AuthRequest, res: Response): Promi
       latitude, longitude, selfieUrl, documentUrl, documentBackUrl,
     } = req.body as Record<string, unknown>;
 
-    // Build update object — only include defined fields
     const data: Record<string, unknown> = {};
     if (companyName   !== undefined) data['companyName']   = companyName;
     if (bio           !== undefined) data['bio']           = bio;
@@ -114,7 +113,7 @@ export const updateMakerProfile = async (req: AuthRequest, res: Response): Promi
     if (selfieUrl        !== undefined) data['selfieUrl']        = selfieUrl;
     if (documentUrl      !== undefined) data['documentUrl']      = documentUrl;
     if (documentBackUrl  !== undefined) data['documentBackUrl']  = documentBackUrl;
-    // When documents are sent, reset kycStatus to PENDING and clear any correction note
+    // reenvio de documentos volta o kycStatus para PENDING e limpa a nota de correção
     if (selfieUrl || documentUrl || documentBackUrl) {
       data['kycStatus'] = 'PENDING';
       data['kycNote']   = null;
@@ -179,7 +178,6 @@ export const getMakerDashboard = async (req: AuthRequest, res: Response): Promis
   }
 };
 
-// ── Lista paginada de avaliações do maker logado ─────────────────────────────
 export const getMakerReviews = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '10' } = req.query as Record<string, string>;

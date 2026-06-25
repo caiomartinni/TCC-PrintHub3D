@@ -14,19 +14,12 @@ interface CurrencyInputProps {
   name?: string;
 }
 
-/**
- * Brazilian-style currency input.
- * Digits shift left-to-right as in bank apps.
- * Stores value as a float (e.g. 50.00).
- * Type "5000" → displays "50,00".
- */
+// input de moeda estilo banco: dígitos deslocam da direita para a esquerda; armazena float (ex: 50.00)
 const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
   ({ label, error, icon, value = 0, onChange, onBlur, placeholder, disabled, className, name }, ref) => {
 
-    // Keep an integer of cents internally
     const [cents, setCents] = useState<number>(() => Math.round((value ?? 0) * 100));
 
-    // Sync when parent changes value (e.g. form reset)
     useEffect(() => {
       setCents(Math.round((value ?? 0) * 100));
     }, [value]);
@@ -36,7 +29,6 @@ const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       : (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // Strip everything except digits
       const raw = e.target.value.replace(/\D/g, '');
       const newCents = raw ? Math.min(parseInt(raw, 10), 99_999_999) : 0; // cap at 999.999,99
       setCents(newCents);

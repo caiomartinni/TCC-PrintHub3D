@@ -20,7 +20,6 @@ import api from '@/services/api';
 
 const MATERIALS = ['PLA', 'ABS', 'PETG', 'Resina', 'TPU', 'Nylon', 'PLA+', 'Outro'];
 
-// ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
   name:         z.string().min(3,  'Nome obrigatório'),
   description:  z.string().min(20, 'Mínimo 20 caracteres'),
@@ -37,7 +36,6 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-// ── Image uploader component ──────────────────────────────────────────────────
 function ImageSlot({
   index, url, uploading, onChange, onRemove,
 }: {
@@ -82,7 +80,6 @@ function ImageSlot({
   );
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
 function ProductModal({
   product, categories, onClose, onSaved,
 }: {
@@ -138,7 +135,7 @@ function ProductModal({
   const onSubmit = async (data: FormData) => {
     const images = imageUrls.filter(Boolean);
     try {
-      // Preço de venda = preço base + 10% de comissão da plataforma
+      // preço de venda = preço base + 10% de comissão da plataforma
       const salePrice = +(data.price * 1.10).toFixed(2);
       const payload = { ...data, price: salePrice, images, comparePrice: data.comparePrice || undefined };
       if (isEdit) {
@@ -332,7 +329,6 @@ function ProductModal({
   );
 }
 
-// ── Pending banner ────────────────────────────────────────────────────────────
 function PendingBanner() {
   return (
     <div className="mb-6 rounded-2xl p-5 flex items-start gap-4"
@@ -349,7 +345,6 @@ function PendingBanner() {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function MakerProducts() {
   const { user, refreshUser } = useAuth();
   const { success, error } = useToast();
@@ -386,7 +381,6 @@ export default function MakerProducts() {
     if (!product) return;
     setDeleting(true);
     try {
-      // If active → deactivate (soft delete). If inactive → reactivate (update).
       if (product.isActive) {
         await productsService.delete(deleteId);
         success('Produto desativado', `"${product.name}" foi removido do marketplace.`);

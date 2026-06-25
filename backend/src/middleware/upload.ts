@@ -5,7 +5,6 @@ import fs from 'fs';
 const uploadDir = path.join(process.cwd(), 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// Disk storage — saves locally and returns filename
 const diskStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
@@ -36,21 +35,21 @@ const modelFilter = (
   allowed.test(ext) ? cb(null, true) : cb(new Error('Apenas arquivos STL, OBJ ou 3MF são suportados'));
 };
 
-// Used for product images → saves to disk
+// imagens de produto: salvo em disco local (limite 10 MB)
 export const uploadImage = multer({
   storage: diskStorage,
   fileFilter: imageFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-// Used for STL files → memory (Cloudinary)
+// arquivos STL/OBJ/3MF: mantidos em memória para envio direto ao Cloudinary (limite 100 MB)
 export const uploadSTL = multer({
   storage: memoryStorage,
   fileFilter: modelFilter,
   limits: { fileSize: 100 * 1024 * 1024 },
 });
 
-// Used for KYC documents → memory (Cloudinary)
+// documentos KYC: memória para envio ao Cloudinary (limite 20 MB)
 export const uploadDocument = multer({
   storage: memoryStorage,
   fileFilter: imageFilter,

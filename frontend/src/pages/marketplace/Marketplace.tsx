@@ -38,14 +38,12 @@ export default function Marketplace() {
   const [showFilters,       setShowFilters]       = useState(false);
   const [total,             setTotal]             = useState(0);
 
-  // Fetch categories once on mount
   useEffect(() => {
     api.get('/categories')
       .then((r) => setCategories((r.data as { data: Category[] }).data))
       .catch(() => {});
   }, []);
 
-  // Fetch products from API when search / category / sortBy change
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
@@ -74,7 +72,7 @@ export default function Marketplace() {
     return () => clearTimeout(timer);
   }, [fetchProducts]);
 
-  // Client-side filter for materials + price (no extra API call)
+  // filtragem de material e faixa de preço no cliente — evita chamada extra à API
   useEffect(() => {
     let filtered = [...allProducts];
     if (selectedMaterials.length)

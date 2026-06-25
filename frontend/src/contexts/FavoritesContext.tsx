@@ -34,7 +34,6 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
       const products = await productsService.getFavorites();
       setFavoriteProducts(products);
     } catch {
-      // silent
     } finally {
       setLoading(false);
     }
@@ -50,7 +49,7 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
 
     const alreadyFav = favoriteIds.has(product.id);
 
-    // Optimistic update
+    // atualização otimista: reflete mudança imediatamente, reverte se a API falhar
     if (alreadyFav) {
       setFavoriteProducts(prev => prev.filter(p => p.id !== product.id));
     } else {
@@ -60,7 +59,6 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
     try {
       await productsService.toggleFavorite(product.id);
     } catch {
-      // Rollback on error
       if (alreadyFav) {
         setFavoriteProducts(prev => [product, ...prev]);
       } else {

@@ -11,7 +11,6 @@ import { formatCurrency, formatDate } from '@/utils/format';
 import type { Order, OrderStatus, TrackingEntry } from '@/types';
 import { CARRIERS } from './MakerOrders';
 
-// ── Status timeline config ────────────────────────────────────────────────────
 const STEPS: { status: OrderStatus; label: string; icon: React.ReactNode; desc: string }[] = [
   { status: 'PENDING',       icon: <Clock size={16}/>,       label: 'Pedido recebido',       desc: 'Aguardando confirmação do maker'        },
   { status: 'CONFIRMED',     icon: <CheckCircle size={16}/>, label: 'Confirmado',             desc: 'Maker confirmou e irá produzir a peça'  },
@@ -91,7 +90,6 @@ function TrackingStep({
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function OrderTracking() {
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -117,7 +115,6 @@ export default function OrderTracking() {
   const isCancelled  = order.status === 'CANCELLED' || order.status === 'REFUNDED';
   const currentIndex = getStepIndex(isCancelled ? 'PENDING' : order.status);
 
-  // Shipping entry
   const shipEntry    = order.tracking ? [...order.tracking].reverse().find(t => t.status === 'SHIPPED') : null;
   const carrier      = shipEntry?.carrier;
   const trackCode    = shipEntry?.trackingCode;

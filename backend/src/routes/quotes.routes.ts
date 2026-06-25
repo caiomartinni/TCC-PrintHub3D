@@ -7,7 +7,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = Router();
 
-// Static routes before /:id patterns
+// rotas estáticas devem vir antes de /:id para evitar conflito
 router.get('/open',   authenticate, authorize('MAKER', 'ADMIN'), getOpenQuotes);
 router.get('/maker',  authenticate, authorize('MAKER', 'ADMIN'), getMakerQuotes);
 router.get('/',       authenticate, getQuoteRequests);

@@ -1,5 +1,4 @@
-// Mercado Pago Split Marketplace - Pre-integration service
-// Configure MERCADO_PAGO_ACCESS_TOKEN to enable
+// serviço stub para split marketplace do Mercado Pago — ainda não integrado
 import logger from '../utils/logger.js';
 
 export interface PaymentData {
@@ -33,8 +32,7 @@ class PaymentService {
   }
 
   async createCheckout(data: PaymentData): Promise<PaymentResult> {
-    // TODO: Integrate Mercado Pago Checkout Pro
-    // POST https://api.mercadopago.com/checkout/preferences
+    // TODO: integrar Checkout Pro — POST https://api.mercadopago.com/checkout/preferences
     logger.debug({ data }, '[PaymentService] createCheckout - not yet integrated');
     return {
       externalId: `mock_${Date.now()}`,
@@ -44,8 +42,7 @@ class PaymentService {
   }
 
   async createSplitPayment(data: PaymentData, split: SplitConfig): Promise<PaymentResult> {
-    // TODO: Integrate Mercado Pago Marketplace Split
-    // Uses marketplace access token with application_fee
+    // TODO: integrar split marketplace — usa access token com application_fee
     logger.debug({ data, split }, '[PaymentService] createSplitPayment - not yet integrated');
     const makerAmount = data.amount * (1 - split.platformFeeRate);
     const platformFee = data.amount * split.platformFeeRate;
@@ -65,8 +62,7 @@ class PaymentService {
   }
 
   async processWebhook(body: Record<string, unknown>): Promise<void> {
-    // TODO: Process Mercado Pago webhooks
-    // Validate webhook signature with MERCADO_PAGO_WEBHOOK_SECRET
+    // TODO: validar assinatura com MERCADO_PAGO_WEBHOOK_SECRET
     logger.info({ body }, '[PaymentService] processWebhook');
   }
 

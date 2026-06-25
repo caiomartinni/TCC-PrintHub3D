@@ -16,7 +16,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { makersService } from '@/services/makers.service';
 
-// ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
   companyName:    z.string().optional(),
   bio:            z.string().max(500, 'Máximo 500 caracteres').optional(),
@@ -35,7 +34,6 @@ const STATES = [
   'MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO',
 ];
 
-// ── Section wrapper ───────────────────────────────────────────────────────────
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -48,7 +46,6 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function MakerProfileEdit() {
   const { user, refreshUser } = useAuth();
   const { success, error }    = useToast();
@@ -62,24 +59,18 @@ export default function MakerProfileEdit() {
     resolver: zodResolver(schema),
   });
 
-  // Busca dados frescos do servidor ao abrir a página (garante kycStatus atualizado)
+  // busca dados frescos ao abrir a página para garantir kycStatus atualizado
   useEffect(() => {
     void refreshUser();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load current profile
+  // getDashboard não retorna campos do perfil — dados vêm de user.makerProfile após refreshUser
   useEffect(() => {
     makersService.getDashboard()
-      .then(() => {
-        // getDashboard doesn't return profile fields — use auth/me via refreshUser
-        // The profile data is in user.makerProfile after refresh
-      })
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Use authService.me() data stored in the user context
-    // We'll load from the makers/dashboard or directly set from what we know
     if (user?.makerProfile) {
       const mp = user.makerProfile as {
         companyName?: string; bio?: string; website?: string; instagram?: string;
@@ -118,7 +109,6 @@ export default function MakerProfileEdit() {
     }
   };
 
-  // ── Printer helpers ───────────────────────────────────────────────────────
   const addPrinter = () => {
     const v = newPrinter.trim();
     if (!v || printers.includes(v)) return;
@@ -127,7 +117,6 @@ export default function MakerProfileEdit() {
   };
   const removePrinter = (p: string) => setPrinters(prev => prev.filter(x => x !== p));
 
-  // ── Material helpers ──────────────────────────────────────────────────────
   const toggleMaterial = (m: string) =>
     setMaterials(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
 

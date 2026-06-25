@@ -26,11 +26,9 @@ export default function ProductCard({ product, onFavorite, viewMode = 'grid' }: 
     onFavorite?.(product.id);
   };
 
-  // ── List mode ──────────────────────────────────────────────────────────────
   if (viewMode === 'list') return (
     <Link to={`/product/${product.slug}`} className="group block">
       <div className="glass rounded-xl border border-white/10 hover:border-neon-blue/30 hover:shadow-neon-blue transition-all duration-300 flex gap-4 p-3 items-center">
-        {/* Thumbnail */}
         <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-dark-700 shrink-0">
           <img
             src={product.images[0] || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=200'}
@@ -96,11 +94,9 @@ export default function ProductCard({ product, onFavorite, viewMode = 'grid' }: 
     </Link>
   );
 
-  // ── Grid mode ──────────────────────────────────────────────────────────────
   return (
     <Link to={`/product/${product.slug}`} className="group block">
       <div className="glass rounded-2xl overflow-hidden border border-white/10 hover:border-neon-blue/30 hover:shadow-neon-blue transition-all duration-300 h-full flex flex-col">
-        {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-dark-700">
           <img
             src={product.images[0] || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400'}

@@ -10,19 +10,8 @@ import { validate } from '../middleware/validate.js';
 
 const router = Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CPF/CNPJ — mesmo algoritmo de dígito verificador (módulo 11) já usado em
-// frontend/src/pages/auth/Register.tsx (funções isValidCPF/isValidCNPJ).
-//
-// Por que `optional`: o controller `register` (auth.controller.ts) só lê
-// `{ email, password, name, phone, role }` do body — `cpf`/`cnpj` NÃO fazem
-// parte do contrato atual desse endpoint (e também não existem em User nem
-// em MakerProfile no schema.prisma). O formulário de Register.tsx coleta e
-// valida CPF/CNPJ no cliente, mas `authService.register()` não os envia ao
-// back-end hoje. Então "no formato correto onde aplicável" se traduz em:
-// validar SE vier preenchido — blindagem contra dado malformado caso esses
-// campos passem a ser enviados/persistidos no futuro — sem quebrar nem
-// tornar obrigatório algo que a rota não processa atualmente.
+// CPF/CNPJ validados com módulo 11 — campos opcionais pois o controller atual
+// não os persiste; validação existe para blindagem caso sejam enviados no futuro
 const isValidCPF = (raw: string): boolean => {
   const d = raw.replace(/\D/g, '');
   if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
@@ -50,7 +39,6 @@ const isValidCNPJ = (raw: string): boolean => {
   return calc(12) === +d[12] && calc(13) === +d[13];
 };
 
-// ── POST /api/auth/register ──────────────────────────────────────────────────
 const registerValidation = [
   body('name')
     .trim()
@@ -61,16 +49,13 @@ const registerValidation = [
     .trim()
     .notEmpty().withMessage('E-mail é obrigatório').bail()
     .isEmail().withMessage('E-mail inválido'),
-    // normalizeEmail() REMOVIDO: transformaria e-mails Gmail com ponto
-    // (ex.: jo.ao@gmail.com → joao@gmail.com) ANTES de chegar no controller,
-    // causando mismatch com o que está armazenado no banco e quebrando o login
-    // de usuários já cadastrados. O isEmail() acima já garante formato válido.
+    // normalizeEmail() omitido — transformaria "jo.ao@gmail.com" em "joao@gmail.com"
+    // e quebraria login de usuários já cadastrados com o ponto
 
   body('password')
     .notEmpty().withMessage('Senha é obrigatória').bail()
     .isLength({ min: 8 }).withMessage('A senha deve ter no mínimo 8 caracteres'),
 
-  // Opcionais — formato só é checado quando o campo é enviado (ver nota acima).
   body('cpf')
     .optional({ values: 'falsy' })
     .custom((value: unknown) => typeof value === 'string' && isValidCPF(value))
@@ -84,18 +69,14 @@ const registerValidation = [
   validate,
 ];
 
-// ── POST /api/auth/login ─────────────────────────────────────────────────────
 const loginValidation = [
   body('email')
     .trim()
     .notEmpty().withMessage('E-mail é obrigatório').bail()
     .isEmail().withMessage('E-mail inválido'),
-    // normalizeEmail() REMOVIDO — mesmo motivo do register (ver acima).
+    // normalizeEmail() omitido — mesmo motivo do registro (quebraria contas com ponto no Gmail)
 
-  // Login não é o lugar de reforçar a política de criação de senha (tamanho
-  // mínimo etc.) — uma conta antiga pode ter senha mais curta que a regra
-  // atual. Aqui validamos apenas a presença; quem decide se ela está correta
-  // é o bcrypt.compare dentro do controller.
+  // valida apenas presença — política de tamanho não se aplica no login (contas antigas podem ter senha curta)
   body('password')
     .notEmpty().withMessage('Senha é obrigatória'),
 
@@ -112,7 +93,6 @@ router.delete('/account',  authenticate, deleteAccount);
 router.get('/address',    authenticate, getAddress);
 router.post('/address',   authenticate, saveAddress);
 
-// Recuperação de senha (rotas públicas)
 router.post('/forgot-password',             forgotPassword);
 router.get('/reset-password/:token',        validateResetToken);
 router.post('/reset-password',              resetPasswordWithToken);

@@ -4,7 +4,6 @@ import { successResponse, errorResponse, paginatedResponse } from '../utils/resp
 import { AuthRequest } from '../types/index.js';
 import logger from '../utils/logger.js';
 
-// ── DASHBOARD ─────────────────────────────────────────────────────────────────
 export const getDashboard = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const now        = new Date();
@@ -28,14 +27,12 @@ export const getDashboard = async (_req: AuthRequest, res: Response): Promise<vo
       prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
       prisma.payment.aggregate({ where: { status: 'PAID', createdAt: { gte: monthStart } }, _sum: { amount: true } }),
       prisma.product.count({ where: { isActive: true } }),
-      // Pending makers with user info
       prisma.makerProfile.findMany({
         where: { status: 'PENDING' },
         take: 5,
         orderBy: { createdAt: 'desc' },
         include: { user: { select: { id: true, name: true, avatar: true, email: true } } },
       }),
-      // Recent orders
       prisma.order.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
@@ -63,7 +60,6 @@ export const getDashboard = async (_req: AuthRequest, res: Response): Promise<vo
   }
 };
 
-// ── USERS ─────────────────────────────────────────────────────────────────────
 export const getUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '20', search, role } = req.query as Record<string, string>;
@@ -103,7 +99,6 @@ export const toggleUser = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-// ── MAKERS ────────────────────────────────────────────────────────────────────
 export const getMakers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '20', status, search } = req.query as Record<string, string>;
@@ -127,7 +122,7 @@ export const getMakers = async (req: AuthRequest, res: Response): Promise<void> 
       prisma.makerProfile.count({ where }),
     ]);
 
-    // Fetch documentBackUrl via raw query (field added after Prisma client generation)
+    // documentBackUrl buscado via raw query pois o campo foi adicionado após a geração do Prisma client
     const makerIds = makers.map(m => m.id);
     let backUrls: Record<string, string> = {};
     if (makerIds.length > 0) {
@@ -162,17 +157,12 @@ export const updateMakerStatus = async (req: AuthRequest, res: Response): Promis
     const newMakerStatus = statusMap[action];
     if (!newMakerStatus) { errorResponse(res, 'Ação inválida', 400); return; }
 
-    // Determine whether the USER account should be active
-    // suspend  → block the user immediately (isActive = false)
-    // reject   → block the user (isActive = false)
-    // approve / reactivate → restore access (isActive = true)
+    // suspend/reject bloqueia o usuário imediatamente; approve/reactivate restaura o acesso
     const userShouldBeActive = action === 'approve' || action === 'reactivate';
 
-    // Find maker to get userId
     const makerProfile = await prisma.makerProfile.findUnique({ where: { id }, select: { userId: true } });
     if (!makerProfile) { errorResponse(res, 'Maker não encontrado', 404); return; }
 
-    // Map maker status to kycStatus
     const kycMap: Record<string, string> = {
       approve:    'APPROVED',
       reject:     'REJECTED',
@@ -180,7 +170,6 @@ export const updateMakerStatus = async (req: AuthRequest, res: Response): Promis
       reactivate: 'PENDING',  // back to pending when reactivated
     };
 
-    // Update both MakerProfile and User in a single transaction
     const [maker] = await prisma.$transaction([
       prisma.makerProfile.update({
         where: { id },
@@ -207,7 +196,6 @@ export const updateMakerStatus = async (req: AuthRequest, res: Response): Promis
   }
 };
 
-// ── ORDERS ────────────────────────────────────────────────────────────────────
 export const getOrders = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '20', status, search } = req.query as Record<string, string>;
@@ -239,7 +227,6 @@ export const getOrders = async (req: AuthRequest, res: Response): Promise<void> 
   }
 };
 
-// ── PRODUCTS ──────────────────────────────────────────────────────────────────
 export const getProducts = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '20', search, active } = req.query as Record<string, string>;
@@ -279,7 +266,6 @@ export const toggleProduct = async (req: AuthRequest, res: Response): Promise<vo
   }
 };
 
-// ── REQUEST KYC CORRECTION ────────────────────────────────────────────────────
 export const requestKycCorrection = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id }   = req.params as { id: string };
@@ -287,7 +273,7 @@ export const requestKycCorrection = async (req: AuthRequest, res: Response): Pro
 
     if (!note?.trim()) { errorResponse(res, 'Informe o que precisa ser corrigido', 400); return; }
 
-    // Store note + required files as JSON so the maker UI can parse which uploads to show
+    // armazena como JSON para que o frontend saiba quais uploads exibir ao maker
     const kycNote = JSON.stringify({ note: note.trim(), files: files ?? [] });
 
     await prisma.makerProfile.update({
@@ -302,5 +288,5 @@ export const requestKycCorrection = async (req: AuthRequest, res: Response): Pro
   }
 };
 
-// Keep backward compat
+// mantém compatibilidade com chamadas anteriores a updateMakerStatus
 export const approveMaker = updateMakerStatus;

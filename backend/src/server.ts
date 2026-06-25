@@ -42,7 +42,7 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-// Cria tabela de solicitações de saque se não existir
+// tabelas criadas via raw query pois não estão no schema Prisma (gerenciadas manualmente)
 prisma.$queryRawUnsafe(`
   CREATE TABLE IF NOT EXISTS withdrawal_requests (
     id          VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
@@ -58,7 +58,6 @@ prisma.$queryRawUnsafe(`
   )
 `).catch(e => logger.error(e as Error, 'Tabela withdrawal_requests'));
 
-// Cria tabela de saques (histórico de saques concluídos) se não existir
 prisma.$queryRawUnsafe(`
   CREATE TABLE IF NOT EXISTS saques (
     id             VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL PRIMARY KEY,
@@ -74,7 +73,6 @@ prisma.$queryRawUnsafe(`
   )
 `).catch(e => logger.error(e as Error, 'Tabela saques'));
 
-// Endpoint público de estatísticas para a landing page
 app.get('/api/stats', async (_req, res) => {
   try {
     const [totalMakers, totalProducts, totalOrders] = await Promise.all([

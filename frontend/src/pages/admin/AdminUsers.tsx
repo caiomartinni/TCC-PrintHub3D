@@ -55,7 +55,6 @@ export default function AdminUsers() {
     }
   }, [page, search, roleFilter, error]);
 
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => { setPage(1); load(); }, 400);
     return () => clearTimeout(t);
@@ -94,7 +93,6 @@ export default function AdminUsers() {
 
   const totalPages = Math.ceil(total / LIMIT);
 
-  // Count stats
   const stats = [
     { label: 'Total',   value: total,                             color: 'text-white',         bg: 'bg-white/5'        },
     { label: 'Clientes',value: users.filter(u => u.role === 'CLIENT').length, color: 'text-gray-300', bg: 'bg-white/5' },

@@ -83,7 +83,6 @@ export default function MakerDashboard() {
   const [reviews,      setReviews]      = useState<RecentReview[]>([]);
   const [loading,      setLoading]      = useState(true);
 
-  // Modal "Solicitar Saque"
   const [walletOpen,      setWalletOpen]      = useState(false);
   const [walletLoading,   setWalletLoading]   = useState(false);
   const [balancePending,  setBalancePending]  = useState(0);

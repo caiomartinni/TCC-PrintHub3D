@@ -12,7 +12,6 @@ import { useToast } from '@/components/ui/Toast';
 import { chatService } from '@/services/chat.service';
 import type { Chat, ChatMessage } from '@/types';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatTime(dateStr: string): string {
   const d   = new Date(dateStr);
   const now = new Date();
@@ -23,7 +22,6 @@ function formatTime(dateStr: string): string {
       ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-// ── Message bubble ────────────────────────────────────────────────────────────
 function MessageBubble({ msg, isMine }: { msg: ChatMessage; isMine: boolean }) {
   return (
     <div className={`flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'} items-end`}>
@@ -54,7 +52,6 @@ function MessageBubble({ msg, isMine }: { msg: ChatMessage; isMine: boolean }) {
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function OrderChat() {
   const { id: orderId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -76,7 +73,6 @@ export default function OrderChat() {
   const scrollToBottom = (smooth = true) =>
     bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
 
-  // ── Load chat ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!orderId) return;
     setLoading(true);
@@ -99,19 +95,18 @@ export default function OrderChat() {
         setLoadError(friendlyMsg);
       })
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- orderId é estável durante a sessão
   }, [orderId]);
 
   useEffect(() => { if (!loading) scrollToBottom(false); }, [loading]);
 
-  // ── Polling (5s) ──────────────────────────────────────────────────────────
   const pollMessages = useCallback(async () => {
     if (!chat?.id) return;
     setPolling(true);
     try {
       const { messages: fresh } = await chatService.getMessages(chat.id);
       setMessages(fresh);
-    } catch { /* silent */ }
+    } catch { /* falha silenciosa no polling */ }
     finally { setPolling(false); }
   }, [chat?.id]);
 
@@ -123,7 +118,6 @@ export default function OrderChat() {
 
   useEffect(() => { scrollToBottom(); }, [messages.length]);
 
-  // ── Send ──────────────────────────────────────────────────────────────────
   const handleSend = async () => {
     if (sending) return;
 
@@ -152,7 +146,6 @@ export default function OrderChat() {
       const saved = await chatService.sendMessage(chat.id, text);
       setMessages(prev => prev.map(m => m.id === optimistic.id ? saved : m));
     } catch (err: unknown) {
-      // Rollback optimistic message
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
       setInput(text);
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -168,7 +161,6 @@ export default function OrderChat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  // ── Participants ──────────────────────────────────────────────────────────
   const otherParticipant = chat?.order
     ? user?.id === chat.order.client.id
       ? chat.order.maker.user
@@ -178,16 +170,12 @@ export default function OrderChat() {
   const orderName = chat?.order?.items?.[0]?.product?.name
     ?? `Pedido #${(orderId ?? '').slice(-8).toUpperCase()}`;
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
-    /* Full-screen flex layout — sidebar + chat column */
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
       <Sidebar />
 
-      {/* Chat column — fills remaining width, fixed height */}
       <div className="flex flex-col flex-1 min-w-0 h-screen">
 
-        {/* ── Top bar ── */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-white/5 glass-dark shrink-0">
           <button onClick={() => navigate(-1)} className="btn-ghost !p-2 shrink-0">
             <ChevronLeft size={20} />
@@ -221,7 +209,6 @@ export default function OrderChat() {
           </button>
         </div>
 
-        {/* ── Messages — scrollable area ── */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center h-full gap-2 text-gray-500 text-sm">
@@ -262,7 +249,6 @@ export default function OrderChat() {
           <div ref={bottomRef} />
         </div>
 
-        {/* ── Input bar — always at bottom ── */}
         <div className="shrink-0 border-t border-white/5 bg-[#0d0d0d] px-6 py-4">
           {!chat && !loading && (
             <p className="text-center text-sm text-red-400 mb-2 flex items-center justify-center gap-1.5">
@@ -300,7 +286,6 @@ export default function OrderChat() {
               />
             </div>
 
-            {/* ── SEND BUTTON ── */}
             <button
               onClick={handleSend}
               disabled={!chat || !input.trim() || sending || loading}

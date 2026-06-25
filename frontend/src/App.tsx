@@ -18,9 +18,7 @@ import ProductDetail from '@/pages/marketplace/ProductDetail';
 import MakersList from '@/pages/marketplace/MakersList';
 import MakerProfile from '@/pages/marketplace/MakerProfile';
 import QuoteRequest from '@/pages/marketplace/QuoteRequest';
-// QuoteComparison: página com dados mockados (mockResponses), sem nenhum fluxo real
-// que navegue até ela. Rota desativada para não ficar acessível via URL direta
-// durante a apresentação. Ver frontend/src/pages/marketplace/QuoteComparison.tsx.
+// QuoteComparison usa dados mockados e nenhum fluxo real navega até ela; rota desativada
 // import QuoteComparison from '@/pages/marketplace/QuoteComparison';
 import ClientDashboard from '@/pages/dashboard/ClientDashboard';
 import MakerDashboard from '@/pages/dashboard/MakerDashboard';
@@ -70,32 +68,25 @@ function PublicRoute({ children }: { children: ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
       <Route path="/" element={<Landing />} />
       <Route path="/marketplace" element={<Marketplace />} />
       <Route path="/product/:slug" element={<ProductDetail />} />
       <Route path="/makers" element={<MakersList />} />
       <Route path="/maker/:id" element={<MakerProfile />} />
       <Route path="/quote/request" element={<ProtectedRoute><QuoteRequest /></ProtectedRoute>} />
-      {/* Desativada: nenhum lugar do app navega para /quote/compare; a tela usa
-          dados mockados (mockResponses) e o botão "Aceitar" não conclui nenhum
-          fluxo real — ver comentário acima sobre QuoteComparison. */}
       {/* <Route path="/quote/compare" element={<QuoteComparison />} /> */}
 
-      {/* Auth */}
       <Route path="/login"           element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register"        element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password"  element={<ResetPassword  />} />
 
-      {/* Client Dashboard */}
       <Route path="/dashboard/client" element={<ProtectedRoute roles={['CLIENT']}><ClientDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/client/orders" element={<ProtectedRoute><ClientOrders /></ProtectedRoute>} />
       <Route path="/dashboard/client/quotes" element={<ProtectedRoute><ClientQuotes /></ProtectedRoute>} />
       <Route path="/dashboard/client/favorites" element={<ProtectedRoute><ClientFavorites /></ProtectedRoute>} />
       <Route path="/dashboard/client/notifications" element={<ProtectedRoute roles={['CLIENT']}><ClientDashboard /></ProtectedRoute>} />
 
-      {/* Maker Dashboard */}
       <Route path="/dashboard/maker" element={<ProtectedRoute roles={['MAKER']}><MakerDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/maker/profile"  element={<ProtectedRoute roles={['MAKER']}><MakerProfileEdit /></ProtectedRoute>} />
       <Route path="/dashboard/maker/products" element={<ProtectedRoute roles={['MAKER']}><MakerProducts /></ProtectedRoute>} />
@@ -105,27 +96,22 @@ function AppRoutes() {
       <Route path="/dashboard/maker/financeiro" element={<ProtectedRoute roles={['MAKER']}><MakerFinanceiro /></ProtectedRoute>} />
       <Route path="/dashboard/maker/notifications" element={<ProtectedRoute roles={['MAKER']}><MakerDashboard /></ProtectedRoute>} />
 
-      {/* Order */}
       <Route path="/order/:id"          element={<ProtectedRoute><OrderTracking /></ProtectedRoute>} />
       <Route path="/order/:id/tracking" element={<ProtectedRoute><OrderTracking /></ProtectedRoute>} />
       <Route path="/order/:id/detail"   element={<ProtectedRoute><OrderDetail   /></ProtectedRoute>} />
       <Route path="/order/:id/chat"     element={<ProtectedRoute><OrderChat /></ProtectedRoute>} />
 
-      {/* Payment */}
       <Route path="/checkout"         element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
       <Route path="/payment/status"   element={<ProtectedRoute><PaymentStatus /></ProtectedRoute>} />
 
-      {/* Admin */}
       <Route path="/admin"            element={<ProtectedRoute roles={['ADMIN']}><AdminDashboard  /></ProtectedRoute>} />
       <Route path="/admin/users"       element={<ProtectedRoute roles={['ADMIN']}><AdminUsers      /></ProtectedRoute>} />
       <Route path="/admin/makers"      element={<ProtectedRoute roles={['ADMIN']}><AdminMakers     /></ProtectedRoute>} />
       <Route path="/admin/orders"      element={<ProtectedRoute roles={['ADMIN']}><AdminOrders     /></ProtectedRoute>} />
       <Route path="/admin/reports"     element={<ProtectedRoute roles={['ADMIN']}><AdminProducts   /></ProtectedRoute>} />
 
-      {/* Settings / Profile */}
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/profile"  element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      {/* Static pages */}
       <Route path="/termos"    element={<TermosDeUso />} />
       <Route path="/privacidade" element={<Privacidade />} />
       <Route path="/ajuda"     element={<CentralDeAjuda />} />

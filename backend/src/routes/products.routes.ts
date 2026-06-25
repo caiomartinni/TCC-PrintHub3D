@@ -9,17 +9,6 @@ import { validate } from '../middleware/validate.js';
 
 const router = Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST / (createProduct) — validações batem com o que products.controller.ts
-// realmente lê do body (`{ name, description, price, categoryId, material,
-// images?, tags?, stock?, color?, weight?, dimensions?, printTime? }`) e com
-// as restrições do model Product em schema.prisma (price: Float obrigatório,
-// stock: Int @default(0), categoryId referencia Category.id String @id
-// @default(uuid()) → formato UUID).
-//
-// E-mail/senha/CPF·CNPJ não entram aqui: são dados de PESSOA (User/
-// MakerProfile), e esta rota cria um PRODUTO — não há "onde aplicável" para
-// esses três no payload de criação de produto.
 const createProductValidation = [
   body('name')
     .trim()
@@ -43,8 +32,6 @@ const createProductValidation = [
     .trim()
     .notEmpty().withMessage('Material é obrigatório'),
 
-  // Opcional no controller (`stock?: number`, default 0 no schema) — quando
-  // enviado, precisa ser um inteiro válido (estoque negativo não faz sentido).
   body('stock')
     .optional({ values: 'null' })
     .isInt({ min: 0 }).withMessage('Estoque deve ser um número inteiro maior ou igual a zero'),
@@ -52,13 +39,12 @@ const createProductValidation = [
   validate,
 ];
 
-// Static routes must come before /:slug / /:id
+// rotas estáticas devem vir antes de /:slug para evitar conflito
 router.get('/',          getProducts);
 router.get('/mine',      authenticate, authorize('MAKER', 'ADMIN'), getMyProducts);
 router.get('/favorites', authenticate, getFavorites);
 router.get('/:slug',     getProduct);
 
-// Validação parcial para PUT — só price é verificado quando presente
 const updateProductValidation = [
   body('price')
     .optional()

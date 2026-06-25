@@ -22,7 +22,6 @@ import { authService } from '@/services/auth.service';
 import { makersService } from '@/services/makers.service';
 import { PWD_RULES } from '@/pages/auth/Register';
 
-// ── Schemas ───────────────────────────────────────────────────────────────────
 const profileSchema = z.object({
   name:  z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
   phone: z.string().optional(),
@@ -91,7 +90,6 @@ const BASE_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 const MAKER_TAB = { id: 'perfil-maker' as Tab, label: 'Perfil Maker', icon: <Building2 size={16} /> };
 
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function Settings() {
   const { user, logout, refreshUser } = useAuth();
   const { success, error } = useToast();
@@ -114,12 +112,10 @@ export default function Settings() {
   const [avatarPreview,  setAvatarPreview]  = useState<string | null>(null);
   const [removingAvatar, setRemovingAvatar] = useState(false);
 
-  // ── KYC document upload state ─────────────────────────────────────────────────
   const [kycFiles,      setKycFiles]      = useState<{ selfie?: File; docFront?: File; docBack?: File }>({});
   const [kycPreviews,   setKycPreviews]   = useState<{ selfie?: string; docFront?: string; docBack?: string }>({});
   const [uploadingKyc,  setUploadingKyc]  = useState(false);
 
-  // ── Maker profile state ───────────────────────────────────────────────────────
   const [printers,   setPrinters]   = useState<string[]>([]);
   const [materials,  setMaterials]  = useState<string[]>([]);
   const [newPrinter, setNewPrinter] = useState('');
@@ -132,7 +128,6 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Local preview immediately
     const objectUrl = URL.createObjectURL(file);
     setAvatarPreview(objectUrl);
     setUploadingAvatar(true);
@@ -171,7 +166,6 @@ export default function Settings() {
                   : user?.role === 'ADMIN' ? 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30'
                   : 'bg-neon-blue/20 text-neon-blue border-neon-blue/30';
 
-  // ── Profile form ─────────────────────────────────────────────────────────────
   const profileForm = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
     defaultValues: { name: user?.name ?? '', phone: user?.phone ?? '' },
@@ -184,7 +178,6 @@ export default function Settings() {
     } catch { error('Erro', 'Não foi possível atualizar o perfil.'); }
   };
 
-  // ── Password form ─────────────────────────────────────────────────────────────
   const passwordForm = useForm<PasswordData>({ resolver: zodResolver(passwordSchema) });
   const onSavePassword = async (data: PasswordData) => {
     try {
@@ -197,7 +190,6 @@ export default function Settings() {
     }
   };
 
-  // ── Address form ──────────────────────────────────────────────────────────────
   const addressForm = useForm<AddressData>({
     resolver: zodResolver(addressSchema),
     defaultValues: { label: 'Casa' },
@@ -237,7 +229,6 @@ export default function Settings() {
     } catch { error('Erro', 'Não foi possível salvar o endereço.'); }
   };
 
-  // ── Load maker profile ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!isMaker) return;
     const mp = user?.makerProfile as {
@@ -323,7 +314,6 @@ export default function Settings() {
 
   const makerId = (user?.makerProfile as { id?: string })?.id;
 
-  // ── Delete account ────────────────────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     if (!deletePass) return;
     setDeletingAcc(true);

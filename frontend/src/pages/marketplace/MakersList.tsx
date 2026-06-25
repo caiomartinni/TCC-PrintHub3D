@@ -32,7 +32,7 @@ export default function MakersList() {
 
       const res = await makersService.getAll(params);
 
-      // Client-side material filter (API doesn't support multi-material filter)
+      // filtro de material no cliente — a API não suporta múltiplos materiais simultaneamente
       let data = res.data;
       if (selectedMaterials.length > 0) {
         data = data.filter(m => {
@@ -50,7 +50,6 @@ export default function MakersList() {
     }
   }, [search, selectedState, selectedMaterials, sortBy]);
 
-  // Debounce search
   useEffect(() => {
     const t = setTimeout(load, 350);
     return () => clearTimeout(t);

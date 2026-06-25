@@ -20,9 +20,8 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   try {
     const payload = verifyToken(token);
 
-    // Always verify account is still active in the DB.
-    // This ensures suspended/deactivated users lose access immediately,
-    // even if they still have a valid JWT.
+    // verifica no banco se a conta ainda está ativa — garante que usuários suspensos
+    // perdem acesso imediatamente mesmo com JWT válido
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
       select: { isActive: true },

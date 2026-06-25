@@ -18,7 +18,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-// Returns a user-specific localStorage key so carts don't bleed between accounts
+// chave isolada por usuário para evitar vazamento de carrinho entre contas
 const storageKey = (userId?: string) =>
   userId ? `printhub_cart_${userId}` : null;
 
@@ -40,13 +40,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items,  setItems]  = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  // ── Reload cart whenever the logged-in user changes ──────────────────────────
+  // recarrega carrinho ao trocar de conta e fecha o drawer
   useEffect(() => {
     setItems(loadCart(user?.id));
-    setIsOpen(false); // close drawer on account switch
+    setIsOpen(false);
   }, [user?.id]);
 
-  // ── Persist to the current user's key whenever items change ──────────────────
   useEffect(() => {
     const key = storageKey(user?.id);
     if (key) {
@@ -54,7 +53,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [items, user?.id]);
 
-  // ── Actions ───────────────────────────────────────────────────────────────────
   const addItem = useCallback(
     (product: Product, quantity = 1) => {
       if (!isAuthenticated) {

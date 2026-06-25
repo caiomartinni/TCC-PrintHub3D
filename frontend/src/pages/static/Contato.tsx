@@ -15,7 +15,7 @@ export default function Contato() {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) return;
     setSending(true);
-    // Simulate sending (backend integration to be added)
+    // TODO: integrar com backend para envio real de e-mail
     await new Promise(r => setTimeout(r, 1200));
     setSending(false);
     setSent(true);

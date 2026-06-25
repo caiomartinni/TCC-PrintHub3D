@@ -13,7 +13,7 @@ const isCloudinaryConfigured = () =>
   !!process.env['CLOUDINARY_CLOUD_NAME'] &&
   process.env['CLOUDINARY_CLOUD_NAME'] !== 'your_cloud_name';
 
-/** Salva buffer em disco e retorna URL relativa */
+// fallback quando Cloudinary não está configurado: salva localmente e retorna URL relativa
 const saveToDisk = (buffer: Buffer, originalName: string): string => {
   const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(originalName).toLowerCase()}`;
   fs.writeFileSync(path.join(uploadDir, filename), buffer);
@@ -23,7 +23,6 @@ const saveToDisk = (buffer: Buffer, originalName: string): string => {
 export const uploadImage = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.file) { errorResponse(res, 'Nenhum arquivo enviado', 400); return; }
-    // diskStorage → req.file.filename; memoryStorage → req.file.buffer
     const url = isCloudinaryConfigured()
       ? await uploadToCloudinary(req.file.buffer ?? fs.readFileSync(path.join(uploadDir, req.file.filename ?? '')), 'images', 'image')
       : `/uploads/${req.file.filename}`;

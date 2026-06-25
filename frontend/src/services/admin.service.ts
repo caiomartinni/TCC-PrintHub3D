@@ -73,14 +73,12 @@ export const adminService = {
     return data.data as AdminDashboard;
   },
 
-  // Users
   async getUsers(params?: { page?: number; limit?: number; search?: string; role?: string }) {
     const { data } = await api.get('/admin/users', { params });
     return data as PaginatedResponse<AdminUser>;
   },
   async toggleUser(id: string) { await api.patch(`/admin/users/${id}/toggle`); },
 
-  // Makers
   async getMakers(params?: { page?: number; limit?: number; status?: string; search?: string }) {
     const { data } = await api.get('/admin/makers', { params });
     return data as PaginatedResponse<AdminMaker>;
@@ -93,13 +91,11 @@ export const adminService = {
     await api.patch(`/admin/makers/${id}/kyc-correction`, { note, files });
   },
 
-  // Orders
   async getOrders(params?: { page?: number; limit?: number; status?: string; search?: string }) {
     const { data } = await api.get('/admin/orders', { params });
     return data as PaginatedResponse<Order>;
   },
 
-  // Products
   async getProducts(params?: { page?: number; limit?: number; search?: string; active?: string }) {
     const { data } = await api.get('/admin/products', { params });
     return data as PaginatedResponse<AdminProduct>;

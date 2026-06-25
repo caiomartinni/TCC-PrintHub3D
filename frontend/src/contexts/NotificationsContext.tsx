@@ -33,11 +33,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       setNotifications(data.notifications);
       setUnreadCount(data.unread);
     } catch {
-      // silent — don't break UI if notifications fail
+      // falha silenciosa — notificações não devem quebrar a UI
     }
   }, [isAuthenticated]);
 
-  // Initial load + polling
   useEffect(() => {
     if (!isAuthenticated) {
       setNotifications([]);

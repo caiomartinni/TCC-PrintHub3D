@@ -17,7 +17,6 @@ import api from '@/services/api';
 
 const maskCEP = (v: string) => v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d{0,3})/, '$1-$2');
 
-// Minimum deadline: 2 days from today
 const minDeadline = () => {
   const d = new Date();
   d.setDate(d.getDate() + 2);
@@ -88,7 +87,6 @@ export default function QuoteRequest() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [showMaterialInfo, setShowMaterialInfo] = useState(false);
-  // Delivery address
   const [deliveryMode, setDeliveryMode] = useState<'saved' | 'new'>('saved');
   const [savedAddress, setSavedAddress] = useState<{
     label: string; zipCode: string; street: string; number: string;
@@ -97,19 +95,18 @@ export default function QuoteRequest() {
   const [loadingAddress, setLoadingAddress] = useState(false);
   const [newAddr, setNewAddr] = useState({ cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '' });
   const [loadingCep, setLoadingCep] = useState(false);
-  // Browser geolocation — used to notify nearby makers
+  // coordenadas usadas para notificar makers próximos; sem elas, notifica todos
   const [geoCoords, setGeoCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setGeoCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-        () => {} // silent — works without location (notifies all makers)
+        () => {} // falha silenciosa — sem coordenadas notifica todos os makers
       );
     }
   }, []);
 
-  // Fetch saved address from profile
   useEffect(() => {
     setLoadingAddress(true);
     authService.getAddress()
@@ -118,7 +115,7 @@ export default function QuoteRequest() {
       .finally(() => setLoadingAddress(false));
   }, []);
 
-  // Sync city/state into form from selected address (maker matching)
+  // sincroniza cidade/estado no form para usar no matching de makers
   useEffect(() => {
     if (deliveryMode === 'saved' && savedAddress) {
       setValue('city', savedAddress.city);
@@ -166,7 +163,6 @@ export default function QuoteRequest() {
       return;
     }
     try {
-      // Faz upload dos arquivos antes de criar o orçamento
       let fileUrl:  string | undefined;
       let imageUrl: string | undefined;
 
@@ -213,12 +209,11 @@ export default function QuoteRequest() {
     }
   };
 
-  // Declarado APÓS onSubmit para evitar referência antes da inicialização
+  // declarado após onSubmit para evitar referência antes da inicialização
   const handleFormSubmit = handleSubmit(onSubmit, (errs) => {
     console.log('Erros de validação:', errs);
     if (errs.title || errs.description) { setStep(1); return; }
     if (errs.resistance || errs.quantity || errs.width || errs.height || errs.depth) { setStep(2); return; }
-    // Erro no step 3 (deadline, city, state) — não redireciona, mostra no mesmo step
   });
 
   return (

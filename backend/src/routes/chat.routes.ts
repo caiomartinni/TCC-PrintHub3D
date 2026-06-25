@@ -10,10 +10,10 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 
-// Static routes before /:chatId
+// rotas estáticas devem vir antes de /:chatId para evitar conflito
 router.get('/unread-count',            authenticate, getUnreadCount);
-router.post('/orders/:orderId',        authenticate, getOrCreateChat);  // get-or-create
-router.get('/orders/:orderId',         authenticate, getOrCreateChat);  // alias for GET
+router.post('/orders/:orderId',        authenticate, getOrCreateChat);
+router.get('/orders/:orderId',         authenticate, getOrCreateChat);
 
 router.get('/:chatId/messages',        authenticate, getMessages);
 router.post('/:chatId/messages',       authenticate, sendMessage);

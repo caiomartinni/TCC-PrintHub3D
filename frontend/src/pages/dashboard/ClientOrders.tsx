@@ -15,7 +15,6 @@ import { reviewsService } from '@/services/reviews.service';
 import { formatCurrency, formatDate } from '@/utils/format';
 import type { Order, OrderStatus } from '@/types';
 
-// ── Review modal ──────────────────────────────────────────────────────────────
 function ReviewModal({
   order, onClose, onSaved,
 }: {
@@ -130,7 +129,6 @@ function ReviewModal({
   );
 }
 
-// ── Status config ─────────────────────────────────────────────────────────────
 const STATUS: Record<OrderStatus, { label: string; variant: 'yellow'|'blue'|'purple'|'green'|'gray'|'red'; icon: React.ReactNode }> = {
   PENDING:       { label: 'Aguardando confirmação', variant: 'yellow', icon: <Clock      size={12} /> },
   CONFIRMED:     { label: 'Confirmado',              variant: 'blue',   icon: <Package    size={12} /> },
@@ -142,7 +140,6 @@ const STATUS: Record<OrderStatus, { label: string; variant: 'yellow'|'blue'|'pur
   REFUNDED:      { label: 'Reembolsado',             variant: 'gray',   icon: <XCircle    size={12} /> },
 };
 
-// Progress bar steps
 const STEPS: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PRINTING', 'QUALITY_CHECK', 'SHIPPED', 'DELIVERED'];
 const STEP_LABELS = ['Criado', 'Confirmado', 'Imprimindo', 'Controle QA', 'Enviado', 'Entregue'];
 
@@ -155,7 +152,7 @@ function OrderCard({ order, onReview, onConfirmDelivery }: { order: Order; onRev
   const stepIdx = STEPS.indexOf(order.status);
   const progress = stepIdx >= 0 ? Math.round(((stepIdx + 1) / STEPS.length) * 100) : 100;
 
-  // Product name takes priority over generic notes like "Compra via Marketplace"
+  // nome do produto tem prioridade sobre a nota genérica "Compra via Marketplace"
   const productName = order.items?.[0]?.product?.name;
   const isGenericNote = order.notes === 'Compra via Marketplace' || order.notes?.startsWith('Compra via');
   const title = productName
@@ -163,10 +160,7 @@ function OrderCard({ order, onReview, onConfirmDelivery }: { order: Order; onRev
     ?? order.notes
     ?? `Pedido #${order.id.slice(-8).toUpperCase()}`;
 
-  // Show extra items count
   const extraItems = (order.items?.length ?? 0) - 1;
-
-  // Product thumbnail
   const thumbImages = (order.items?.[0]?.product?.images as unknown as string[]) ?? [];
   const thumb = thumbImages[0];
 
@@ -174,7 +168,6 @@ function OrderCard({ order, onReview, onConfirmDelivery }: { order: Order; onRev
     <div className="glass rounded-2xl border border-white/5 hover:border-white/10 transition-all overflow-hidden">
       <div className="p-4">
         <div className="flex items-start gap-4">
-          {/* Product thumbnail */}
           <div className="w-16 h-16 rounded-xl overflow-hidden bg-dark-700 shrink-0 border border-white/5">
             {thumb ? (
               <img src={thumb} alt={title} className="w-full h-full object-cover" />
@@ -294,7 +287,6 @@ function OrderCard({ order, onReview, onConfirmDelivery }: { order: Order; onRev
   );
 }
 
-// ── Confirm delivery modal ────────────────────────────────────────────────────
 function ConfirmDeliveryModal({
   order, onClose, onConfirmed,
 }: {
@@ -359,7 +351,6 @@ function ConfirmDeliveryModal({
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function ClientOrders() {
   const { error } = useToast();
   const [orders,                setOrders]                = useState<Order[]>([]);

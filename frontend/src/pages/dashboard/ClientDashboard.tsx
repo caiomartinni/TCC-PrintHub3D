@@ -17,12 +17,10 @@ import { quotesService } from '@/services/quotes.service';
 import { formatCurrency, formatDate } from '@/utils/format';
 import type { Order, QuoteRequest, QuoteResponse, MakerProfile, User } from '@/types';
 
-// Extended quote type
 interface QuoteWithResponses extends QuoteRequest {
   responses: (QuoteResponse & { maker?: MakerProfile & { user?: Pick<User, 'name'|'avatar'> } })[];
 }
 
-// Time-ago helper
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60000);
@@ -60,7 +58,6 @@ export default function ClientDashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Computed stats
   const activeOrders   = orders.filter(o => !['DELIVERED','CANCELLED','REFUNDED'].includes(o.status));
   const openQuotes     = quotes.filter(q => q.status === 'OPEN');
   const pendingQuotes  = quotes.filter(q => q.responses?.some(r => r.status === 'PENDING') && q.status !== 'ACCEPTED');

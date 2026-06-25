@@ -13,7 +13,6 @@ import { makersService } from '@/services/makers.service';
 import { formatDate } from '@/utils/format';
 import type { Product } from '@/types';
 
-// Extended type matching what the backend returns for this endpoint
 interface MakerReview {
   id:        string;
   rating:    number;
@@ -64,7 +63,6 @@ export default function MakerProfile() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
@@ -74,7 +72,6 @@ export default function MakerProfile() {
     </div>
   );
 
-  // ── Not found ─────────────────────────────────────────────────────────────
   if (notFound || !maker) return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
@@ -88,7 +85,7 @@ export default function MakerProfile() {
     </div>
   );
 
-  // Cast JSON fields to string[] (Prisma returns them as parsed JS values)
+  // Prisma retorna campos JSON como valores JS; precisa de cast explícito para string[]
   const printers  = (maker.printers  as string[]) ?? [];
   const materials = (maker.materials as string[]) ?? [];
 

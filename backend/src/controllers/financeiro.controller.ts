@@ -4,7 +4,6 @@ import { successResponse, errorResponse, paginatedResponse } from '../utils/resp
 import { AuthRequest } from '../types/index.js';
 import logger from '../utils/logger.js';
 
-// ── Resumo financeiro ────────────────────────────────────────────────────────
 export const getResumo = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const maker = await prisma.makerProfile.findUnique({
@@ -37,7 +36,6 @@ export const getResumo = async (req: AuthRequest, res: Response): Promise<void> 
   }
 };
 
-// ── Histórico de saques concluídos ───────────────────────────────────────────
 export const getSaques = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const maker = await prisma.makerProfile.findUnique({

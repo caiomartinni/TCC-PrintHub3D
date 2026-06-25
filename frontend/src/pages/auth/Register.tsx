@@ -14,13 +14,11 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { cn } from '@/utils/cn';
 
-// ── Masks ────────────────────────────────────────────────────────────────────
 const maskCPF    = (v: string) => v.replace(/\D/g,'').slice(0,11).replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4');
 const maskCNPJ   = (v: string) => v.replace(/\D/g,'').slice(0,14).replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,'$1.$2.$3/$4-$5');
 const maskPhone  = (v: string) => { const d=v.replace(/\D/g,'').slice(0,11); return d.length<=10?d.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3'):d.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3'); };
 const maskCEP    = (v: string) => v.replace(/\D/g,'').slice(0,8).replace(/(\d{5})(\d{0,3})/,'$1-$2');
 
-// ── CPF / CNPJ validators (check digits) ────────────────────────────────────
 function isValidCPF(raw: string): boolean {
   const d = raw.replace(/\D/g, '');
   if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
@@ -48,7 +46,6 @@ function isValidCNPJ(raw: string): boolean {
   return calc(12) === +d[12] && calc(13) === +d[13];
 }
 
-// ── Password strength helpers ─────────────────────────────────────────────────
 export const PWD_RULES = [
   { key: 'length',    label: 'Mínimo 8 caracteres',      test: (p: string) => p.length >= 8 },
   { key: 'upper',     label: 'Letra maiúscula (A-Z)',     test: (p: string) => /[A-Z]/.test(p) },
@@ -93,7 +90,6 @@ function PasswordStrength({ password }: { password: string }) {
   );
 }
 
-// ── Schemas ──────────────────────────────────────────────────────────────────
 const infoSchema = z.object({
   entityType:          z.enum(['PF','PJ']),
   fullName:            z.string().optional(),
@@ -140,7 +136,6 @@ const addressSchema = z.object({
 type InfoData    = z.infer<typeof infoSchema>;
 type AddressData = z.infer<typeof addressSchema>;
 
-// ── Stepper helper ────────────────────────────────────────────────────────────
 const STEPS_CLIENT = ['Conta','Pessoa','Informações','Endereço'];
 const STEPS_MAKER  = ['Conta','Pessoa','Informações','Endereço','Verificação'];
 
@@ -177,7 +172,6 @@ function Stepper({ step, isMaker }: { step: number; isMaker: boolean }) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
 export default function Register() {
   const { register: authRegister } = useAuth();
   const { success, error } = useToast();
@@ -197,12 +191,10 @@ export default function Register() {
   const infoForm = useForm<InfoData>({ resolver: zodResolver(infoSchema) });
   const addrForm = useForm<AddressData>({ resolver: zodResolver(addressSchema) });
 
-  // Keep entityType in sync with form value
   useEffect(() => {
     if (entityType) infoForm.setValue('entityType', entityType);
   }, [entityType, infoForm]);
 
-  // ── CEP lookup ──────────────────────────────────────────────────────────────
   const lookupCEP = async (cep: string) => {
     const digits = cep.replace(/\D/g,'');
     if (digits.length !== 8) return;
@@ -220,7 +212,6 @@ export default function Register() {
     finally { setLoadingCep(false); }
   };
 
-  // ── Step 4 handler: MAKER → step 5 KYC; CLIENT → register ──────────────────
   const handleAddressSubmit = (addrData: AddressData) => {
     if (role === 'MAKER') {
       setStep(5);
@@ -229,7 +220,6 @@ export default function Register() {
     }
   };
 
-  // ── Final submit ────────────────────────────────────────────────────────────
   const doRegister = async (addrData: AddressData) => {
     const info = infoForm.getValues();
     setSubmitting(true);
@@ -238,7 +228,7 @@ export default function Register() {
       await authRegister({ email: info.email, password: info.password, name, phone: info.phone, role: role! });
       localStorage.setItem('printhub_user_location', JSON.stringify({ city: addrData.city, state: addrData.state }));
 
-      // Persist the address informed during registration as the profile's main address
+      // salva o endereço informado no cadastro como endereço principal do perfil
       const { authService: auth } = await import('@/services/auth.service');
       await auth.saveAddress({
         label:      'Casa',
@@ -251,7 +241,6 @@ export default function Register() {
         state:      addrData.state,
       }).catch(() => {});
 
-      // For makers: save city/state and upload documents (token available now)
       if (role === 'MAKER') {
         const { makersService: ms } = await import('@/services/makers.service');
 
@@ -260,7 +249,6 @@ export default function Register() {
           state: addrData.state,
         };
 
-        // Upload documents if provided
         try {
           if (selfie)    profileUpdate['selfieUrl']        = await auth.uploadAvatar(selfie);
           if (docFront)  profileUpdate['documentUrl']      = await auth.uploadAvatar(docFront);
@@ -278,7 +266,6 @@ export default function Register() {
     } finally { setSubmitting(false); }
   };
 
-  // ── Logo ────────────────────────────────────────────────────────────────────
   const Logo = () => (
     <Link to="/" className="flex items-center gap-2 mb-8 justify-center">
       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
@@ -288,7 +275,6 @@ export default function Register() {
     </Link>
   );
 
-  // ── Step 1: Role ─────────────────────────────────────────────────────────────
   if (step === 1) return (
     <div key="step-1" className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
@@ -320,7 +306,6 @@ export default function Register() {
     </div>
   );
 
-  // ── Step 2: Entity type ───────────────────────────────────────────────────────
   if (step === 2) return (
     <div key="step-2" className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
@@ -353,7 +338,6 @@ export default function Register() {
     </div>
   );
 
-  // ── Step 3: Info form ─────────────────────────────────────────────────────────
   if (step === 3) return (
     <div key="step-3" className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
@@ -427,7 +411,6 @@ export default function Register() {
     </div>
   );
 
-  // ── Step 4: Address ───────────────────────────────────────────────────────────
   if (step === 4) return (
     <div key="step-4" className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
       <div className="w-full max-w-lg">
@@ -441,7 +424,6 @@ export default function Register() {
         <form onSubmit={addrForm.handleSubmit(handleAddressSubmit)} autoComplete="off"
           className="glass rounded-2xl p-6 border border-white/10 space-y-4">
 
-          {/* CEP */}
           <div className="relative">
             <Input label="CEP *" placeholder="00000-000" icon={<MapPin size={16} />}
               autoComplete="postal-code"
@@ -498,7 +480,6 @@ export default function Register() {
     </div>
   );
 
-  // ── Step 5: KYC (MAKER only) ──────────────────────────────────────────────────
   return (
     <div key="step-5" className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
       <div className="w-full max-w-lg">

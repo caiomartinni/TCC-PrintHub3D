@@ -19,7 +19,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { quotesService, type MakerQuoteOpen, type MakerQuoteResponded } from '@/services/quotes.service';
 import { formatCurrency, formatDate } from '@/utils/format';
 
-// ── Respond schema ────────────────────────────────────────────────────────────
 const respondSchema = z.object({
   price:         z.coerce.number().positive('Informe o valor'),
   shippingPrice: z.coerce.number().min(0).optional(),
@@ -28,7 +27,6 @@ const respondSchema = z.object({
 });
 type RespondForm = z.infer<typeof respondSchema>;
 
-// ── Status badge helper ───────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; variant: 'blue' | 'yellow' | 'green' | 'red' | 'gray' }> = {
     OPEN:     { label: 'Aberta',            variant: 'blue'   },
@@ -41,7 +39,6 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={s.variant}>{s.label}</Badge>;
 }
 
-// ── Respond modal ─────────────────────────────────────────────────────────────
 function RespondModal({
   quote, onClose, onSent,
 }: {
@@ -227,7 +224,6 @@ function RespondModal({
   );
 }
 
-// ── Quote request card ────────────────────────────────────────────────────────
 function QuoteCard({
   quote, onRespond, onReject, isActive,
 }: {
@@ -325,7 +321,6 @@ function QuoteCard({
   );
 }
 
-// ── Responded card ────────────────────────────────────────────────────────────
 function RespondedCard({ item }: { item: MakerQuoteResponded }) {
   const [expanded, setExpanded] = useState(false);
   const q = item.quoteRequest;
@@ -372,7 +367,6 @@ function RespondedCard({ item }: { item: MakerQuoteResponded }) {
   );
 }
 
-// ── Reject confirmation modal ─────────────────────────────────────────────────
 function RejectModal({ quote, onClose, onRejected }: { quote: MakerQuoteOpen; onClose: () => void; onRejected: () => void }) {
   const { success, error } = useToast();
   const [loading, setLoading] = useState(false);
@@ -423,7 +417,6 @@ function RejectModal({ quote, onClose, onRejected }: { quote: MakerQuoteOpen; on
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function MakerQuotes() {
   const { user, refreshUser } = useAuth();
   const { error } = useToast();

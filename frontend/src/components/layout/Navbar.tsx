@@ -11,7 +11,6 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
 
-// ── Notification icon by type ──────────────────────────────────────────────────
 function NotifIcon({ type }: { type: string }) {
   const map: Record<string, { icon: React.ReactNode; color: string }> = {
     ORDER_UPDATE:      { icon: <Package       size={14} />, color: 'text-neon-blue'   },

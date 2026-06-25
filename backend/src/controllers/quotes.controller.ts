@@ -7,7 +7,6 @@ import { NotificationType } from '@prisma/client';
 import { findNearestMakers } from '../services/geo.service.js';
 import logger from '../utils/logger.js';
 
-// ── CLIENT: create a quote request ──────────────────────────────────────────
 export const createQuoteRequest = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const data = req.body as {
@@ -29,9 +28,8 @@ export const createQuoteRequest = async (req: AuthRequest, res: Response): Promi
       },
     });
 
-    // Notify makers
+    // notifica makers próximos se coordenadas foram informadas, ou todos os ativos caso contrário
     if (data.latitude && data.longitude) {
-      // Nearby makers only
       const makers = await prisma.makerProfile.findMany({
         where: { status: 'ACTIVE', latitude: { not: null }, longitude: { not: null } },
         include: { user: true },
@@ -52,7 +50,6 @@ export const createQuoteRequest = async (req: AuthRequest, res: Response): Promi
         }
       }
     } else {
-      // No coordinates — notify ALL active makers
       const allMakers = await prisma.makerProfile.findMany({
         where: { status: 'ACTIVE' },
         select: { userId: true },
@@ -75,7 +72,6 @@ export const createQuoteRequest = async (req: AuthRequest, res: Response): Promi
   }
 };
 
-// ── CLIENT: list own quote requests ─────────────────────────────────────────
 export const getQuoteRequests = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '10', status } = req.query as Record<string, string>;
@@ -108,7 +104,6 @@ export const getQuoteRequests = async (req: AuthRequest, res: Response): Promise
   }
 };
 
-// ── MAKER: get open requests + own responses ─────────────────────────────────
 export const getMakerQuotes = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const makerProfile = await prisma.makerProfile.findUnique({ where: { userId: req.user!.id } });
@@ -117,7 +112,6 @@ export const getMakerQuotes = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // Requests this maker already responded to
     const myResponses = await prisma.quoteResponse.findMany({
       where: { makerId: makerProfile.id },
       orderBy: { createdAt: 'desc' },
@@ -130,7 +124,7 @@ export const getMakerQuotes = async (req: AuthRequest, res: Response): Promise<v
 
     const respondedIds = myResponses.map((r) => r.quoteRequestId);
 
-    // Open requests not yet answered by this maker
+    // exclui solicitações que este maker já respondeu
     const openWhere: Record<string, unknown> = {
       status: 'OPEN',
       expiresAt: { gt: new Date() },
@@ -155,7 +149,6 @@ export const getMakerQuotes = async (req: AuthRequest, res: Response): Promise<v
   }
 };
 
-// ── MAKER: respond with a proposal ──────────────────────────────────────────
 export const respondToQuote = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
@@ -218,7 +211,6 @@ export const respondToQuote = async (req: AuthRequest, res: Response): Promise<v
   }
 };
 
-// ── MAKER: reject a quote request ────────────────────────────────────────────
 export const rejectQuoteRequest = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
@@ -256,7 +248,6 @@ export const rejectQuoteRequest = async (req: AuthRequest, res: Response): Promi
       },
     });
 
-    // Notify the client that this maker declined
     const makerUser = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { name: true } });
     await createNotification(
       quoteRequest.clientId,
@@ -272,7 +263,6 @@ export const rejectQuoteRequest = async (req: AuthRequest, res: Response): Promi
   }
 };
 
-// ── CLIENT: accept a maker's proposal ───────────────────────────────────────
 export const acceptQuoteResponse = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
@@ -287,7 +277,7 @@ export const acceptQuoteResponse = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    // Prevent double-accepting
+    // impede aceitação dupla da mesma proposta
     const existingOrder = await prisma.order.findUnique({
       where: { quoteId: response.quoteRequestId },
     });
@@ -296,7 +286,7 @@ export const acceptQuoteResponse = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    // 1. Update quote statuses atomically
+    // atualiza status da proposta aceita e rejeita as demais em transação atômica
     await prisma.$transaction([
       prisma.quoteResponse.update({ where: { id }, data: { status: 'ACCEPTED' } }),
       prisma.quoteRequest.update({ where: { id: response.quoteRequestId }, data: { status: 'ACCEPTED' } }),
@@ -306,15 +296,14 @@ export const acceptQuoteResponse = async (req: AuthRequest, res: Response): Prom
       }),
     ]);
 
-    // 2. Create Order from accepted proposal
     const estimatedAt = new Date();
     estimatedAt.setDate(estimatedAt.getDate() + (response.deadline || 7));
 
     const order = await prisma.order.create({
       data: {
         clientId:   req.user!.id,
-        makerId:    response.makerId,         // MakerProfile.id
-        quoteId:    response.quoteRequestId,  // links back to QuoteRequest
+        makerId:    response.makerId,
+        quoteId:    response.quoteRequestId,
         subtotal:   response.price,
         shipping:   response.shippingPrice,
         total:      response.price + response.shippingPrice,
@@ -331,7 +320,6 @@ export const acceptQuoteResponse = async (req: AuthRequest, res: Response): Prom
       select: { id: true, status: true, total: true, createdAt: true },
     });
 
-    // 3. Notify accepted maker
     await createNotification(
       response.maker.userId,
       NotificationType.QUOTE_ACCEPTED,
@@ -339,7 +327,6 @@ export const acceptQuoteResponse = async (req: AuthRequest, res: Response): Prom
       `Sua proposta para "${response.quoteRequest.title}" foi aceita. Um pedido foi gerado automaticamente.`
     );
 
-    // 4. Notify other rejected makers
     const rejectedResponses = await prisma.quoteResponse.findMany({
       where: { quoteRequestId: response.quoteRequestId, id: { not: id }, status: 'REJECTED' },
       include: { maker: { select: { userId: true } } },
@@ -360,7 +347,6 @@ export const acceptQuoteResponse = async (req: AuthRequest, res: Response): Prom
   }
 };
 
-// ── MAKER: open quote feed (all active makers see this) ──────────────────────
 export const getOpenQuotes = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '10' } = req.query as Record<string, string>;
@@ -387,7 +373,6 @@ export const getOpenQuotes = async (req: AuthRequest, res: Response): Promise<vo
   }
 };
 
-// ── CLIENT: update files of an existing quote request ────────────────────────
 export const updateQuoteFiles = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params as { id: string };

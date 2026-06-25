@@ -15,7 +15,6 @@ import api from '@/services/api';
 import { formatCurrency, formatDate } from '@/utils/format';
 import type { QuoteRequest, QuoteResponse, MakerProfile } from '@/types';
 
-// Extended types for the API response shape
 interface MakerUser { name: string; avatar?: string }
 interface MakerWithUser extends MakerProfile { user?: MakerUser }
 interface ResponseWithMaker extends QuoteResponse { maker?: MakerWithUser }
@@ -24,7 +23,6 @@ interface QuoteWithResponses extends QuoteRequest {
   _count?: { responses: number };
 }
 
-// ── Status badge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; variant: 'blue'|'yellow'|'green'|'red'|'gray'|'purple' }> = {
     OPEN:     { label: 'Aguardando propostas', variant: 'blue'   },
@@ -47,7 +45,6 @@ function ProposalStatusBadge({ status }: { status: string }) {
   return <Badge variant={s.variant}>{s.label}</Badge>;
 }
 
-// ── Accept confirmation modal ─────────────────────────────────────────────────
 function AcceptModal({
   response, quoteTitle, onClose, onAccepted,
 }: {
@@ -138,7 +135,6 @@ function AcceptModal({
   );
 }
 
-// ── Single quote card ─────────────────────────────────────────────────────────
 function QuoteCard({
   quote, onAccept, onFilesUpdated,
 }: {
@@ -367,7 +363,6 @@ function QuoteCard({
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function ClientQuotes() {
   const { error } = useToast();
   const navigate = useNavigate();
@@ -392,11 +387,10 @@ export default function ClientQuotes() {
 
   const handleAccepted = (orderId: string) => {
     load();
-    // Navigate to orders after a brief delay so the success toast is seen
+    // aguarda o toast de sucesso ser visível antes de redirecionar
     if (orderId) setTimeout(() => navigate('/dashboard/client/orders'), 1500);
   };
 
-  // Split: active (not ACCEPTED) and converted (ACCEPTED → became orders)
   const activeQuotes    = quotes.filter(q => q.status !== 'ACCEPTED');
   const convertedQuotes = quotes.filter(q => q.status === 'ACCEPTED');
 

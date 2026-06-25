@@ -3,7 +3,7 @@ import { initMercadoPago, StatusScreen } from '@mercadopago/sdk-react';
 import { CheckCircle, XCircle, Clock, ShoppingBag, ChevronRight, FlaskConical } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 
-// Initialize MP with the same public key (idempotent call)
+// chamada idempotente — inicializa o SDK do MP se a chave estiver configurada
 const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY as string | undefined;
 if (publicKey) initMercadoPago(publicKey, { locale: 'pt-BR' });
 

@@ -5,13 +5,11 @@ import { successResponse, errorResponse } from '../utils/response.js';
 import { AuthRequest } from '../types/index.js';
 import logger from '../utils/logger.js';
 
-// ── MP client (uses TEST- or PROD- token from .env) ──────────────────────────
 const mpClient = new MercadoPagoConfig({
   accessToken: process.env['MERCADO_PAGO_ACCESS_TOKEN'] || 'TEST-placeholder',
   options: { timeout: 10000 },
 });
 
-// ── CREATE PREFERENCE (called before showing the Brick) ──────────────────────
 export const createPreference = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { orderId } = req.body as { orderId: string };
@@ -28,7 +26,6 @@ export const createPreference = async (req: AuthRequest, res: Response): Promise
 
     if (!order) { errorResponse(res, 'Pedido não encontrado', 404); return; }
     if (order.clientId !== userId) { errorResponse(res, 'Acesso negado', 403); return; }
-    // Check for existing paid payment
     const existingPaid = await prisma.payment.findUnique({ where: { orderId }, select: { status: true } });
     if (existingPaid?.status === 'PAID') { errorResponse(res, 'Pedido já pago', 409); return; }
 
@@ -59,8 +56,7 @@ export const createPreference = async (req: AuthRequest, res: Response): Promise
           failure: `${frontendUrl}/payment/status`,
           pending: `${frontendUrl}/payment/status`,
         },
-        // auto_return only works with HTTPS URLs (not localhost)
-        // notification_url also requires public HTTPS (use ngrok in production)
+        // auto_return e notification_url exigem HTTPS público (usar ngrok em desenvolvimento)
         statement_descriptor: 'PRINTHUB3D',
       },
     });
@@ -78,7 +74,6 @@ export const createPreference = async (req: AuthRequest, res: Response): Promise
   }
 };
 
-// ── PROCESS PAYMENT (called by Brick's onSubmit) ─────────────────────────────
 export const processPayment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId  = req.user!.id;
@@ -96,10 +91,9 @@ export const processPayment = async (req: AuthRequest, res: Response): Promise<v
 
     const isSandbox = (process.env['MERCADO_PAGO_ACCESS_TOKEN'] || '').startsWith('TEST-');
 
-    // ── SANDBOX SIMULATION ─────────────────────────────────────────────────
-    // MP Brazil sandbox prevents test users from the same account from paying
-    // each other (Payer email forbidden). In production this works normally.
-    // For TCC demo purposes, we simulate a successful payment in sandbox.
+    // sandbox do MP Brasil impede pagamentos entre usuários de teste da mesma conta
+    // (erro "Payer email forbidden"); em produção funciona normalmente
+    // para demo do TCC, simula pagamento aprovado em sandbox
     if (isSandbox) {
       const simId = `SANDBOX_${Date.now()}`;
 
@@ -138,7 +132,6 @@ export const processPayment = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // ── PRODUCTION: real MP payment ────────────────────────────────────────
     const mpPayment = new Payment(mpClient);
     const formPayer = (formData['payer'] as Record<string, unknown>) || {};
 
@@ -151,7 +144,6 @@ export const processPayment = async (req: AuthRequest, res: Response): Promise<v
 
     const mpResult = await mpPayment.create({ body: paymentBody });
 
-    // Save/update Payment record in DB
     const existing = await prisma.payment.findUnique({ where: { orderId } });
     const payStatus = mpResult.status === 'approved' ? 'PAID'
                     : mpResult.status === 'pending'  ? 'PROCESSING'
@@ -173,8 +165,8 @@ export const processPayment = async (req: AuthRequest, res: Response): Promise<v
           orderId,
           userId,
           amount:         order.total,
-          platformFee:    order.total * 0.05,   // 5% plataforma
-          makerAmount:    order.total * 0.95,   // 95% maker
+          platformFee:    order.total * 0.05,
+          makerAmount:    order.total * 0.95,
           externalId:     String(mpResult.id),
           externalStatus: mpResult.status,
           status:         payStatus,
@@ -183,7 +175,6 @@ export const processPayment = async (req: AuthRequest, res: Response): Promise<v
       });
     }
 
-    // Update order status if approved
     if (mpResult.status === 'approved') {
       await prisma.order.update({
         where: { id: orderId },
@@ -205,7 +196,6 @@ export const processPayment = async (req: AuthRequest, res: Response): Promise<v
                || 'Erro ao processar pagamento';
     logger.error({ err, apiResponse: mpErr?.cause?.apiResponse }, `[MP] processPayment: ${mpMsg}`);
 
-    // Give user a helpful message for the most common sandbox error
     if (mpMsg.includes('Payer email forbidden') || mpMsg.includes('forbidden')) {
       errorResponse(res,
         'SANDBOX: Email do comprador inválido. No painel do Mercado Pago Developers, ' +
@@ -219,7 +209,6 @@ export const processPayment = async (req: AuthRequest, res: Response): Promise<v
   }
 };
 
-// ── GET PAYMENT STATUS (used by Status Screen Brick) ─────────────────────────
 export const getPaymentStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { paymentId } = req.params as { paymentId: string };
@@ -241,7 +230,6 @@ export const getPaymentStatus = async (req: AuthRequest, res: Response): Promise
   }
 };
 
-// ── WEBHOOK (Mercado Pago notifies payment updates) ──────────────────────────
 export const handleWebhook = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { type, data } = req.body as { type: string; data: { id: string } };

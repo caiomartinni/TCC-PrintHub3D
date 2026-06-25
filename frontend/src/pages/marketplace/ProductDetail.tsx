@@ -36,7 +36,6 @@ export default function ProductDetail() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  // Reset image index when product changes
   useEffect(() => { setSelectedImg(0); setQty(1); }, [product?.id]);
 
   const reviews: Review[] = (product as Product & { reviews?: Review[] })?.reviews ?? [];

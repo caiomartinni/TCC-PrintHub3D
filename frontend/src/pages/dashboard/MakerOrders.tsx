@@ -15,7 +15,6 @@ import { ordersService } from '@/services/orders.service';
 import { formatCurrency, formatDate } from '@/utils/format';
 import type { Order, OrderStatus } from '@/types';
 
-// Transportadoras brasileiras com links de rastreio
 export const CARRIERS = [
   { name: 'Correios',        url: (c: string) => `https://rastreamento.correios.com.br/app/index.php?objetos=${c}` },
   { name: 'Jadlog',          url: (c: string) => `https://www.jadlog.com.br/site/tracking.jad?cte=${c}` },
@@ -27,7 +26,6 @@ export const CARRIERS = [
   { name: 'Outro',           url: () => '' },
 ];
 
-// ── Status config (display) ───────────────────────────────────────────────────
 const STATUS_CONFIG: Record<OrderStatus, { label: string; variant: 'yellow'|'blue'|'purple'|'green'|'gray'|'red' }> = {
   PENDING:       { label: 'Aguardando confirmação', variant: 'yellow' },
   CONFIRMED:     { label: 'Confirmado',              variant: 'blue'   },
@@ -39,7 +37,6 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; variant: 'yellow'|'blu
   REFUNDED:      { label: 'Reembolsado',             variant: 'gray'   },
 };
 
-// ── Next action for each status ───────────────────────────────────────────────
 const NEXT_ACTIONS: Partial<Record<OrderStatus, { label: string; next: OrderStatus; desc: string }>> = {
   PENDING:       { label: 'Confirmar pedido',    next: 'CONFIRMED',     desc: 'Pedido confirmado pelo maker' },
   CONFIRMED:     { label: 'Iniciar impressão',   next: 'PRINTING',      desc: 'Impressão iniciada' },
@@ -47,9 +44,7 @@ const NEXT_ACTIONS: Partial<Record<OrderStatus, { label: string; next: OrderStat
   QUALITY_CHECK: { label: 'Marcar como enviado', next: 'SHIPPED',       desc: 'Peça enviada ao cliente' },
 };
 
-// ── Previous status (permite "voltar etapa" em caso de engano) ─────────────────
-// PENDING fica de fora (já é o início) e DELIVERED/CANCELLED/REFUNDED também
-// (são estados finais com efeitos colaterais — saldo do maker, estoque etc.)
+// estados finais (DELIVERED, CANCELLED, REFUNDED) excluídos — têm efeitos colaterais no saldo e estoque
 const PREV_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   CONFIRMED:     'PENDING',
   PRINTING:      'CONFIRMED',
@@ -57,7 +52,6 @@ const PREV_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   SHIPPED:       'QUALITY_CHECK',
 };
 
-// ── Ship modal ────────────────────────────────────────────────────────────────
 function ShipModal({ orderId, onClose, onShipped }: {
   orderId: string;
   onClose: () => void;
@@ -139,7 +133,6 @@ function ShipModal({ orderId, onClose, onShipped }: {
   );
 }
 
-// ── Confirm step modal (avançar/voltar etapa) ──────────────────────────────────
 function ConfirmStepModal({
   title, description, confirmLabel, danger, loading, onConfirm, onClose,
 }: {
@@ -177,7 +170,6 @@ function ConfirmStepModal({
   );
 }
 
-// ── Order card ────────────────────────────────────────────────────────────────
 function MakerOrderCard({
   order, onUpdated,
 }: {
@@ -217,7 +209,7 @@ function MakerOrderCard({
 
   const handleAdvance = () => {
     if (!action) return;
-    // Envio requer modal próprio para informar transportadora e código (já serve de confirmação)
+    // envio abre modal próprio para capturar transportadora e código de rastreio
     if (action.next === 'SHIPPED') { setShowShipModal(true); return; }
     setConfirmStep({ status: action.next, description: action.desc, isBack: false });
   };
@@ -430,7 +422,6 @@ function MakerOrderCard({
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function MakerOrders() {
   const { error } = useToast();
   const [orders,  setOrders]  = useState<Order[]>([]);

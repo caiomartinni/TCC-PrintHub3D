@@ -25,7 +25,6 @@ export default function QuoteComparison() {
           <p className="text-gray-400 mt-2">Solicitação: "Braço de reposição para drone DJI" · {mockResponses.length} propostas recebidas</p>
         </div>
 
-        {/* Best pick indicator */}
         <div className="glass rounded-2xl p-4 border border-emerald-500/20 bg-emerald-500/5 mb-6 flex items-center gap-3">
           <Check size={18} className="text-emerald-400" />
           <p className="text-sm text-gray-300">
@@ -33,7 +32,6 @@ export default function QuoteComparison() {
           </p>
         </div>
 
-        {/* Desktop Table */}
         <div className="hidden md:block glass rounded-2xl overflow-hidden border border-white/10">
           <table className="w-full">
             <thead>
@@ -94,7 +92,6 @@ export default function QuoteComparison() {
           </table>
         </div>
 
-        {/* Mobile Cards */}
         <div className="md:hidden space-y-4">
           {mockResponses.map((r, i) => (
             <div key={r.id} className={`glass rounded-2xl p-5 border ${i === 1 ? 'border-emerald-500/30' : 'border-white/10'}`}>

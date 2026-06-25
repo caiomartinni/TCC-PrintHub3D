@@ -31,7 +31,6 @@ export const createReview = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    // Pega o produto do primeiro item do pedido (se existir)
     const productId = order.items[0]?.product?.id ?? null;
 
     const review = await prisma.review.create({
@@ -46,7 +45,6 @@ export const createReview = async (req: AuthRequest, res: Response): Promise<voi
       },
     });
 
-    // Atualiza rating do maker
     const makerAgg = await prisma.review.aggregate({
       where: { makerId: order.makerId },
       _avg: { rating: true },
@@ -61,7 +59,6 @@ export const createReview = async (req: AuthRequest, res: Response): Promise<voi
       },
     });
 
-    // Atualiza rating do produto (se tiver productId)
     if (productId) {
       const productAgg = await prisma.review.aggregate({
         where: { productId },

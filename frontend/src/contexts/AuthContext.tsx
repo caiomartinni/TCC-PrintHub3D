@@ -39,15 +39,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     refreshUser();
   }, [refreshUser]);
 
-  // Sync auth state when localStorage changes in another tab
+  // sincroniza estado de auth quando localStorage muda em outra aba (login/logout simultâneo)
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'printhub_token') {
         if (!e.newValue) {
-          // Token removed in another tab → logout here too
           setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
         } else if (e.newValue !== e.oldValue) {
-          // Token changed in another tab (different account logged in) → re-sync
           refreshUser();
         }
       }

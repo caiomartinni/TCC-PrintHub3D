@@ -96,14 +96,12 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       items.map((item) => prisma.product.findUnique({ where: { id: item.productId } }))
     );
 
-    // Validate that all products exist in the database
     const missing = items.filter((_, i) => !products[i]);
     if (missing.length > 0) {
       errorResponse(res, `Produto não encontrado no banco de dados. Atualize o carrinho e tente novamente.`, 422);
       return;
     }
 
-    // Validate stock availability
     const outOfStock = items.filter((item, i) => {
       const p = products[i];
       return p && p.stock < item.quantity;
@@ -113,7 +111,6 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // Validate maker profile exists
     const makerProfile = await prisma.makerProfile.findUnique({ where: { id: makerId } });
     if (!makerProfile) {
       errorResponse(res, 'Maker não encontrado. Atualize o carrinho e tente novamente.', 422);
@@ -153,7 +150,6 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       include: { items: true, tracking: true },
     });
 
-    // Decrementa estoque de cada produto
     await Promise.all(
       items.map((item) =>
         prisma.product.update({
@@ -203,12 +199,12 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     const isClient = order.clientId === req.user!.id;
     const isAdmin  = req.user!.role === 'ADMIN';
 
-    // Clientes só podem confirmar recebimento (DELIVERED)
+    // cliente só pode confirmar recebimento (DELIVERED)
     if (isClient && status !== 'DELIVERED') {
       errorResponse(res, 'Acesso negado', 403);
       return;
     }
-    // Makers não podem marcar como entregue — isso é responsabilidade do cliente
+    // maker não pode confirmar entrega — essa ação é exclusiva do cliente
     if (isMaker && status === 'DELIVERED') {
       errorResponse(res, 'Apenas o cliente pode confirmar o recebimento do pedido', 403);
       return;
@@ -218,8 +214,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    // Bloqueia avanço do maker enquanto pagamento não estiver confirmado
-    // (exceto para CANCELLED — maker pode cancelar a qualquer momento)
+    // maker não pode avançar o status sem pagamento confirmado (exceto cancelamento)
     const progressStatuses = ['CONFIRMED', 'PRINTING', 'QUALITY_CHECK', 'SHIPPED'];
     if (isMaker && progressStatuses.includes(status)) {
       const paymentPaid = order.payment?.status === 'PAID';
@@ -251,9 +246,8 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       include: { items: true },
     });
 
-    // Quando entregue: incrementa totalSales, totalOrders e adiciona ao saldo disponível
     if (status === 'DELIVERED') {
-      // Maker recebe 90% do total do pedido (plataforma fica com 10%)
+      // maker recebe 90% do pedido; plataforma retém 10%
       const makerAmount = parseFloat((order.total * 0.90).toFixed(2));
       await Promise.all([
         ...updated.items.map((item) =>
@@ -272,7 +266,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       ]);
     }
 
-    // Quando cancelado/reembolsado: devolve estoque
+    // cancelamento ou reembolso devolve o estoque dos produtos
     if (status === 'CANCELLED' || status === 'REFUNDED') {
       await Promise.all(
         updated.items.map((item) =>
@@ -285,7 +279,6 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     }
 
     if (isClient) {
-      // Cliente confirmou recebimento → notifica o maker
       const makerUserId = order.maker.userId;
       const shortId = order.id.slice(-8).toUpperCase();
       await createNotification(
@@ -295,7 +288,6 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
         `O cliente confirmou o recebimento do Pedido #${shortId}`
       );
     } else {
-      // Maker/admin atualizou status → notifica o cliente
       await createNotification(
         order.clientId,
         NotificationType.ORDER_UPDATE,

@@ -16,7 +16,6 @@ export default function Checkout() {
   const [mpReady,   setMpReady]   = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
 
-  // Load preference from backend
   useEffect(() => {
     if (!orderId) { setErrorMsg('ID do pedido não informado.'); setLoading(false); return; }
     const envKey = import.meta.env.VITE_MP_PUBLIC_KEY as string;
@@ -39,7 +38,6 @@ export default function Checkout() {
       .finally(() => setLoading(false));
   }, [orderId]);
 
-  // Payment Brick submit handler
   const onSubmit = async ({ formData }: { selectedPaymentMethod: string; formData: Record<string, unknown> }) => {
     return new Promise<void>((resolve, reject) => {
       paymentService.processPayment(orderId, formData)
@@ -58,14 +56,13 @@ export default function Checkout() {
 
   const isSandbox = import.meta.env.VITE_MP_PUBLIC_KEY?.startsWith('TEST-') ?? true;
 
-  // All payment methods enabled — sandbox uses simulation so all methods work
   const customization = {
     paymentMethods: {
       creditCard:   'all' as const,
       debitCard:    'all' as const,
-      ticket:       'all' as const,   // Boleto
-      bankTransfer: 'all' as const,   // Pix
-      mercadoPago:  'all' as const,   // Conta MP
+      ticket:       'all' as const,
+      bankTransfer: 'all' as const,
+      mercadoPago:  'all' as const,
     },
     visual: { style: { theme: 'dark' as const } },
   };
@@ -75,7 +72,6 @@ export default function Checkout() {
       <Navbar />
       <div className="pt-16 max-w-2xl mx-auto px-4 py-10">
 
-        {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <Link to="/dashboard/client/orders" className="btn-ghost !p-2">
             <ChevronLeft size={20} />
@@ -92,13 +88,11 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Security badges */}
         <div className="flex items-center gap-4 mb-6 text-xs text-gray-500">
           <span className="flex items-center gap-1.5"><Lock size={12} className="text-emerald-400" /> Pagamento seguro</span>
           <span className="flex items-center gap-1.5"><Shield size={12} className="text-neon-blue" /> Dados criptografados</span>
         </div>
 
-        {/* Payment Brick container */}
         <div className="rounded-2xl overflow-hidden" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
           <div className="px-6 py-4" style={{ background: '#161616', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <h2 className="font-bold text-white">Escolha a forma de pagamento</h2>
@@ -155,7 +149,6 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* Sandbox test guide */}
         {isSandbox && (
           <div className="mt-6 space-y-3">
             <div className="rounded-xl p-4" style={{ background: '#1a150a', border: '1px solid rgba(251,191,36,0.3)' }}>
@@ -165,7 +158,6 @@ export default function Checkout() {
               </p>
             </div>
 
-            {/* Cartão */}
             <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.08)' }}>
               <p className="text-xs font-bold text-gray-300 mb-3 flex items-center gap-1.5"><CreditCard size={14} />Cartão de crédito/débito</p>
               <div className="space-y-2 text-xs font-mono">
@@ -191,7 +183,6 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Outros métodos */}
             <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.08)' }}>
               <p className="text-xs font-bold text-gray-300 mb-3 flex items-center gap-1.5"><RefreshCw size={13} />Outros métodos (simulados)</p>
               <div className="space-y-1.5 text-xs text-gray-400">
@@ -201,7 +192,6 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Status de pagamento */}
             <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.08)' }}>
               <p className="text-xs font-bold text-gray-300 mb-3 flex items-center gap-1.5"><BarChart3 size={14} />Resultados por nome no cartão</p>
               <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">

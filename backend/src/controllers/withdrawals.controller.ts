@@ -5,7 +5,6 @@ import { successResponse, errorResponse } from '../utils/response.js';
 import { AuthRequest } from '../types/index.js';
 import logger from '../utils/logger.js';
 
-// ── Solicitar saque ───────────────────────────────────────────────────────────
 export const requestWithdrawal = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { amount, pixKey, pixKeyType } = req.body as {
@@ -39,7 +38,7 @@ export const requestWithdrawal = async (req: AuthRequest, res: Response): Promis
 
     const id = randomUUID();
 
-    // Cria a solicitação e debita o saldo em transação
+    // debita saldo disponível e move para pendente em transação atômica
     await prisma.$transaction([
       prisma.$queryRawUnsafe(
         `INSERT INTO withdrawal_requests (id, makerId, amount, pixKey, pixKeyType, status)
@@ -62,7 +61,6 @@ export const requestWithdrawal = async (req: AuthRequest, res: Response): Promis
   }
 };
 
-// ── Histórico de saques do maker ─────────────────────────────────────────────
 export const getWithdrawals = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const maker = await prisma.makerProfile.findUnique({

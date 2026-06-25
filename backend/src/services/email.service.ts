@@ -40,7 +40,6 @@ export const sendPasswordResetEmail = async (
       <table width="560" cellpadding="0" cellspacing="0"
         style="background:#111;border-radius:16px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;max-width:560px;width:100%">
 
-        <!-- Header -->
         <tr>
           <td style="background:linear-gradient(135deg,rgba(0,212,255,0.15),rgba(147,51,234,0.15));padding:32px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08)">
             <h1 style="margin:0;font-size:24px;font-weight:900;color:#fff">
@@ -49,7 +48,6 @@ export const sendPasswordResetEmail = async (
           </td>
         </tr>
 
-        <!-- Body -->
         <tr>
           <td style="padding:36px 32px">
             <h2 style="color:#fff;font-size:20px;font-weight:700;margin:0 0 8px">
@@ -64,7 +62,6 @@ export const sendPasswordResetEmail = async (
               <strong style="color:#fbbf24">1 hora</strong>.
             </p>
 
-            <!-- CTA Button -->
             <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px">
               <tr>
                 <td style="border-radius:12px;background:linear-gradient(135deg,#00d4ff,#9333ea)">
@@ -87,7 +84,6 @@ export const sendPasswordResetEmail = async (
           </td>
         </tr>
 
-        <!-- Footer -->
         <tr>
           <td style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.06);text-align:center">
             <p style="color:#4b5563;font-size:12px;margin:0">
@@ -103,7 +99,7 @@ export const sendPasswordResetEmail = async (
     `,
   });
 
-  // Retorna URL de preview quando usar Ethereal
+  // retorna URL de preview apenas quando usar Ethereal (ambiente de teste de e-mail)
   if (isEthereal()) {
     const previewUrl = nodemailer.getTestMessageUrl(info);
     if (previewUrl) {

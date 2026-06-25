@@ -28,7 +28,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (userRole === 'MAKER') {
-      // New makers start as PENDING — admin reviews KYC documents before activating
+      // makers novos iniciam como PENDING — admin revisa documentos KYC antes de ativar
       await prisma.makerProfile.create({ data: { userId: user.id, status: 'PENDING' } });
     }
 
@@ -127,7 +127,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
     const data: Record<string, unknown> = {};
     if (name   !== undefined) data['name']   = name;
     if (phone  !== undefined) data['phone']  = phone;
-    // empty string means "remove avatar" → store null
+    // string vazia significa "remover avatar" → salva null
     if (avatar !== undefined) data['avatar'] = avatar === '' ? null : avatar;
 
     const user = await prisma.user.update({
@@ -153,24 +153,13 @@ export const deleteAccount = async (req: AuthRequest, res: Response): Promise<vo
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) { errorResponse(res, 'Senha incorreta', 400); return; }
 
-    // ── Hard delete: remove records in FK-safe order ──────────────────────────
-
-    // 1. Messages sent by this user
+    // exclusão em ordem segura para respeitar as chaves estrangeiras
     await prisma.message.deleteMany({ where: { senderId: userId } });
-
-    // 2. Notifications
     await prisma.notification.deleteMany({ where: { userId } });
-
-    // 3. Favorites
     await prisma.favorite.deleteMany({ where: { userId } });
-
-    // 4. Payments
     await prisma.payment.deleteMany({ where: { userId } });
-
-    // 6. Reviews left by this user as client
     await prisma.review.deleteMany({ where: { clientId: userId } });
 
-    // 7. Quote responses from makers linked to this user's maker profile
     const makerProfile = await prisma.makerProfile.findUnique({
       where: { userId }, select: { id: true },
     });
@@ -179,7 +168,6 @@ export const deleteAccount = async (req: AuthRequest, res: Response): Promise<vo
       await prisma.review.deleteMany({ where: { makerId: makerProfile.id } });
     }
 
-    // 8. Quote requests (and their responses cascade)
     const quoteIds = await prisma.quoteRequest.findMany({
       where: { clientId: userId }, select: { id: true },
     });
@@ -189,13 +177,11 @@ export const deleteAccount = async (req: AuthRequest, res: Response): Promise<vo
       await prisma.quoteRequest.deleteMany({ where: { clientId: userId } });
     }
 
-    // 9. Orders by this user as client (tracking, items, chats)
     const clientOrders = await prisma.order.findMany({
       where: { clientId: userId }, select: { id: true },
     });
     if (clientOrders.length > 0) {
       const orderIds = clientOrders.map(o => o.id);
-      // Delete chats and chat messages
       const chats = await prisma.chat.findMany({ where: { orderId: { in: orderIds } }, select: { id: true } });
       if (chats.length > 0) {
         await prisma.message.deleteMany({ where: { chatId: { in: chats.map(c => c.id) } } });
@@ -207,7 +193,6 @@ export const deleteAccount = async (req: AuthRequest, res: Response): Promise<vo
       await prisma.order.deleteMany({ where: { clientId: userId } });
     }
 
-    // 10. Orders where this user is the maker
     if (makerProfile) {
       const makerOrders = await prisma.order.findMany({
         where: { makerId: makerProfile.id }, select: { id: true },
@@ -224,15 +209,11 @@ export const deleteAccount = async (req: AuthRequest, res: Response): Promise<vo
         await prisma.review.deleteMany({ where: { orderId: { in: mOrderIds } } });
         await prisma.order.deleteMany({ where: { makerId: makerProfile.id } });
       }
-      // Products of this maker
       await prisma.favorite.deleteMany({ where: { product: { makerId: makerProfile.id } } });
       await prisma.product.deleteMany({ where: { makerId: makerProfile.id } });
     }
 
-    // 11. Addresses (cascade already handles, but just in case)
     await prisma.address.deleteMany({ where: { userId } });
-
-    // 12. Finally delete the user (cascades: makerProfile, notifications, favorites, addresses)
     await prisma.user.delete({ where: { id: userId } });
 
     successResponse(res, null, 'Conta excluída com sucesso');
@@ -303,12 +284,10 @@ export const saveAddress = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
-// ── FORGOT PASSWORD ───────────────────────────────────────────────────────────
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   const { email } = req.body as { email: string };
   logger.info({ email }, '[forgotPassword] iniciando');
 
-  // 1. Busca usuário
   let user: { id: string; name: string; email: string } | null = null;
   try {
     user = await prisma.user.findUnique({
@@ -325,7 +304,6 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  // 2. Gera token e salva
   try {
     const token  = randomBytes(32).toString('hex');
     const expiry = new Date(Date.now() + 60 * 60 * 1000);
@@ -334,7 +312,6 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       token, expiry, user.id
     );
 
-    // 3. Envia e-mail
     const previewUrl = await sendPasswordResetEmail(user.email, user.name, token);
     successResponse(res, { previewUrl }, 'Link de redefinição enviado para o seu e-mail.');
   } catch (err) {
@@ -343,7 +320,6 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// ── VALIDATE RESET TOKEN ──────────────────────────────────────────────────────
 export const validateResetToken = async (req: Request, res: Response): Promise<void> => {
   try {
     const { token } = req.params as { token: string };
@@ -369,7 +345,6 @@ export const validateResetToken = async (req: Request, res: Response): Promise<v
   }
 };
 
-// ── RESET PASSWORD WITH TOKEN ─────────────────────────────────────────────────
 export const resetPasswordWithToken = async (req: Request, res: Response): Promise<void> => {
   try {
     const { token, newPassword } = req.body as { token: string; newPassword: string };

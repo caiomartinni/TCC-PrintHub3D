@@ -208,7 +208,6 @@ export const getFavorites = async (req: AuthRequest, res: Response): Promise<voi
       },
     });
 
-    // Return products (filter out any whose product was deleted)
     const products = favorites
       .filter(f => f.product !== null)
       .map(f => f.product);

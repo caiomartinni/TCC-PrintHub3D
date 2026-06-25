@@ -6,7 +6,7 @@ import { createNotification } from '../services/notification.service.js';
 import { NotificationType } from '@prisma/client';
 import logger from '../utils/logger.js';
 
-// Helper: resolve who the other participant is and validate access
+// valida acesso ao pedido e resolve o userId do maker
 async function resolveChat(orderId: string, userId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -21,7 +21,6 @@ async function resolveChat(orderId: string, userId: string) {
   return { order, makerUserId };
 }
 
-// ── GET or CREATE chat for an order ──────────────────────────────────────────
 export const getOrCreateChat = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { orderId } = req.params as { orderId: string };
@@ -33,7 +32,7 @@ export const getOrCreateChat = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    // Get existing or create new chat (upsert is atomic — avoids race condition on first open)
+    // upsert garante atomicidade e evita race condition na primeira abertura do chat
     const includeShape = {
       messages: {
         include: { sender: { select: { id: true, name: true, avatar: true, role: true } } },
@@ -55,7 +54,6 @@ export const getOrCreateChat = async (req: AuthRequest, res: Response): Promise<
       include: includeShape,
     });
 
-    // Mark messages from the other party as read
     await prisma.message.updateMany({
       where: { chatId: chat.id, senderId: { not: userId }, isRead: false },
       data: { isRead: true },
@@ -68,7 +66,6 @@ export const getOrCreateChat = async (req: AuthRequest, res: Response): Promise<
   }
 };
 
-// ── GET messages (polling) ────────────────────────────────────────────────────
 export const getMessages = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { chatId } = req.params as { chatId: string };
@@ -92,7 +89,6 @@ export const getMessages = async (req: AuthRequest, res: Response): Promise<void
       orderBy: { createdAt: 'asc' },
     });
 
-    // Mark messages from other party as read while fetching
     await prisma.message.updateMany({
       where: { chatId, senderId: { not: userId }, isRead: false },
       data: { isRead: true },
@@ -109,7 +105,6 @@ export const getMessages = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
-// ── SEND a message ────────────────────────────────────────────────────────────
 export const sendMessage = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { chatId } = req.params as { chatId: string };
@@ -145,7 +140,6 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<void
       include: { sender: { select: { id: true, name: true, avatar: true, role: true } } },
     });
 
-    // Notify the other participant
     const recipientId = userId === chat.order.clientId ? makerUserId : chat.order.clientId;
     const shortId = chat.order.id.slice(-8).toUpperCase();
     const senderName = req.user!.name;
@@ -165,7 +159,6 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
-// ── MARK all messages in chat as read ────────────────────────────────────────
 export const markMessagesAsRead = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { chatId } = req.params as { chatId: string };
@@ -195,12 +188,10 @@ export const markMessagesAsRead = async (req: AuthRequest, res: Response): Promi
   }
 };
 
-// ── GET total unread count for the authenticated user ────────────────────────
 export const getUnreadCount = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
 
-    // Find chat IDs where the user is a participant
     const userOrders = await prisma.order.findMany({
       where: {
         OR: [
