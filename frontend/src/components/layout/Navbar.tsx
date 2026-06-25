@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Printer, Bell, ShoppingCart, Menu, X, ChevronDown,
+  Bell, ShoppingCart, Menu, X, ChevronDown,
   User, LogOut, Settings, Package, Check, CheckCheck,
   FileText, Star, DollarSign, RefreshCw, MessageSquare,
 } from 'lucide-react';
@@ -117,9 +117,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center group-hover:shadow-neon-blue transition-shadow duration-300">
-              <Printer size={16} className="text-white" />
-            </div>
+            <img src="/logo.jpg" alt="PrintHub3D" className="w-8 h-8 rounded-lg object-contain bg-white p-0.5" />
             <span className="font-bold text-white text-xl">
               Print<span className="gradient-text">Hub3D</span>
             </span>

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Send, CheckCircle, Wrench } from 'lucide-react';
-import { Printer } from 'lucide-react';
 import api from '@/services/api';
 
 export default function ForgotPassword() {
@@ -37,9 +36,7 @@ export default function ForgotPassword() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-blue to-neon-purple items-center justify-center mb-4 shadow-[0_0_32px_rgba(0,212,255,0.3)]">
-            <Printer size={24} className="text-white" />
-          </div>
+          <img src="/logo.jpg" alt="PrintHub3D" className="w-14 h-14 rounded-2xl object-contain bg-white p-1.5 mb-4" />
           <h1 className="text-3xl font-black text-white">
             Print<span className="gradient-text">Hub3D</span>
           </h1>

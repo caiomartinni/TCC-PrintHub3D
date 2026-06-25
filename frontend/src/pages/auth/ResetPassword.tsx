@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Lock, Eye, EyeOff, CheckCircle, AlertTriangle, Check, X } from 'lucide-react';
-import { Printer } from 'lucide-react';
 import api from '@/services/api';
 import { PWD_RULES } from './Register';
 
@@ -63,9 +62,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-blue to-neon-purple items-center justify-center mb-4 shadow-[0_0_32px_rgba(147,51,234,0.3)]">
-            <Printer size={24} className="text-white" />
-          </div>
+          <img src="/logo.jpg" alt="PrintHub3D" className="w-14 h-14 rounded-2xl object-contain bg-white p-1.5 mb-4" />
           <h1 className="text-3xl font-black text-white">
             Print<span className="gradient-text">Hub3D</span>
           </h1>

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, Printer, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import Button from '@/components/ui/Button';
@@ -72,9 +72,7 @@ export default function Login() {
         <div className="absolute inset-0 bg-hero-gradient" />
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="text-center relative z-10">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center mx-auto mb-8 shadow-neon-blue-lg">
-              <Printer size={36} className="text-white" />
-            </div>
+            <img src="/logo.jpg" alt="PrintHub3D" className="w-20 h-20 rounded-2xl object-contain bg-white p-2 mx-auto mb-8" />
             <h1 className="text-4xl font-black text-white mb-4">
               Print<span className="gradient-text">Hub3D</span>
             </h1>
@@ -104,9 +102,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <Link to="/" className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center">
-              <Printer size={16} className="text-white" />
-            </div>
+            <img src="/logo.jpg" alt="PrintHub3D" className="w-8 h-8 rounded-lg object-contain bg-white p-0.5" />
             <span className="font-bold text-white text-xl">Print<span className="gradient-text">Hub3D</span></span>
           </Link>
 
@@ -162,15 +158,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Demo credentials */}
-          <div className="mt-8 glass rounded-xl p-4 border border-white/5">
-            <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wider">Demo</p>
-            <div className="space-y-1.5 text-xs text-gray-400">
-              <p>Cliente: cliente@printhub3d.com / client123</p>
-              <p>Maker: maker1@printhub3d.com / maker123</p>
-              <p>Admin: admin@printhub3d.com / admin123</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
